@@ -106,3 +106,7 @@ services are separate from the added Hamilton interface.
 
 Edit integration code outside `vendor/`. Updating an upstream source requires an
 explicit revision update and a regenerated source lock, not an unrecorded patch.
+
+## Warehouse adapters
+
+See [WAREHOUSES.md](WAREHOUSES.md) for Databricks, Snowflake, and ClickHouse configuration, target placement, offline validation, and execution limitations.

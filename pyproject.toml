@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "Complete MetricFlow source distribution with Hamilton semantic-query orchestration"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-dependencies = ["apache-hamilton>=1.90,<2", "duckdb>=1.5,<1.6", "metricflow==0.214.0.dev0"]
+dependencies = ["sqlglot>=30.8,<31", "apache-hamilton>=1.90,<2", "duckdb>=1.5,<1.6", "metricflow==0.214.0.dev0"]
+
+[project.optional-dependencies]
+databricks = ["databricks-sql-connector>=3,<5", "databricks-sdk>=0.40,<1"]
+snowflake = ["snowflake-connector-python>=3,<5"]
+clickhouse = ["clickhouse-connect>=0.8,<2"]
 
 [project.scripts]
 hamilton-flow = "hamilton_flow.cli:main"
