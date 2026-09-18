@@ -1,0 +1,107 @@
+[build-system]
+requires = ["hatchling>=1.27.0,<1.28.0", "hatch-requirements-txt >= 0.4.1, <0.5.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dbt-metricflow"
+description = "Execute commands against the MetricFlow semantic layer with dbt."
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+license = "Apache-2.0"
+authors = [
+  { name = "dbt Labs", email = "info@dbtlabs.com" },
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+# Dependencies are specified through the `hatch-requirements-txt` plug-in.
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[tool.hatch.version]
+path = "dbt_metricflow/__about__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = [
+  "requirements-files/requirements-cli.txt",
+  "requirements-files/requirements-metricflow.txt",
+]
+
+[project.urls]
+"Source Code" = "https://github.com/dbt-labs/metricflow/tree/main/dbt-metricflow"
+
+[project.scripts]
+mf = 'dbt_metricflow.cli.main:cli'
+
+[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+dbt-bigquery = [
+  "requirements-files/requirements-dbt-bigquery.txt"
+]
+dbt-databricks = [
+  "requirements-files/requirements-dbt-databricks.txt"
+]
+dbt-duckdb = [
+  "requirements-files/requirements-dbt-duckdb.txt"
+]
+dbt-athena = [
+  "requirements-files/requirements-dbt-athena.txt"
+]
+dbt-postgres = [
+  "requirements-files/requirements-dbt-postgres.txt"
+]
+dbt-redshift = [
+  "requirements-files/requirements-dbt-redshift.txt"
+]
+dbt-snowflake = [
+  "requirements-files/requirements-dbt-snowflake.txt"
+]
+dbt-trino = [
+  "requirements-files/requirements-dbt-trino.txt"
+]
+dbt-vertica = [
+  "requirements-files/requirements-dbt-vertica.txt"
+]
+dev-env-requirements = [
+  "../requirements-files/dev-env-requirements.txt",
+  "requirements-files/dev-env-requirements.txt"
+]
+
+
+# Environment setup
+[tool.hatch.envs.dev-env]
+description = "Environment for package + CLI development and testing against local MetricFlow code."
+run = "run-coverage --no-cov"
+
+features = ["dev-env-requirements"]
+
+# In order to use the local packages we have to do post-installs of editable versions to clobber the package installs.
+# If we do not do this, then the tests will break on broken imports whenever someone moves things around in
+# metricflow or metricflow-semantics between the latest dbt-metricflow release and test runtime.
+# TODO: switch to workspaces if removal of mf (e.g., after integration with dbt-core) will not happen in a timely fashion.
+post-install-commands = [
+  "pip install -e ../",
+]
+
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/.changes",
+  ".changie.yaml",
+  ".gitignore",
+  ".pre-commit-config.yaml",
+  "CONTRIBUTING.md",
+  "MAKEFILE",
+]

@@ -1,0 +1,50 @@
+# Local Data Warehouses
+
+This folder includes utilities to run data warehouses for local development. See the [Contributing guide](../CONTRIBUTING.md)
+to ensure your environment is setup properly.
+
+## DuckDB
+
+By default, tests will run with DuckDB.
+
+## PostgreSQL
+
+We assume that you have PostgreSQL and Docker installed in your environment.
+
+In a separate terminal window, run PostgreSQL in the background. Note - you MUST have Docker running on localhost in order for the PostgreSQL container to spin up.
+
+```sh
+make postgres
+```
+
+Then, when running `pytest`, ensure that `MF_SQL_ENGINE_URL` and `MF_SQL_ENGINE_PASSWORD` are setup
+to access the PostgreSQL instance.
+
+```sh
+export MF_SQL_ENGINE_URL="postgresql://metricflow@localhost:5432/metricflow"
+export MF_SQL_ENGINE_PASSWORD="metricflowing"
+
+poetry run pytest tests/
+```
+
+## Vertica
+
+We assume that you have Docker installed in your environment.
+
+In a separate terminal window, run Vertica in the background. Note - you MUST have Docker running on localhost in order for the Vertica container to spin up.
+
+The dedicated Vertica Community Edition image was removed from Docker Hub in 2025, so the compose file bootstraps a single-node database inside the `opentext/vertica-k8s` server image instead (see `vertica/initialize-single-node.sh`). Database initialization can take a minute on first startup.
+
+```sh
+make vertica
+```
+
+Then, when running `pytest`, ensure that `MF_SQL_ENGINE_URL` and `MF_SQL_ENGINE_PASSWORD` are setup
+to access the Vertica instance.
+
+```sh
+export MF_SQL_ENGINE_URL="vertica://metricflow@localhost:5433/metricflow"
+export MF_SQL_ENGINE_PASSWORD="metricflowing"
+
+hatch run vertica-env:pytest tests_metricflow/
+```

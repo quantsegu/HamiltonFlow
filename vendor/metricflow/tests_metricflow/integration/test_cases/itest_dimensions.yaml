@@ -1,0 +1,427 @@
+---
+integration_test:
+  name: multiple_dimensions
+  description: Query one metric with multiple dimensions from different sources.
+  model: SIMPLE_MODEL
+  metrics: ["views"]
+  group_bys: ["user__home_state_latest", "listing__is_lux_latest"]
+  check_query: |
+    SELECT
+      SUM(1) AS views
+      , u.home_state_latest AS user__home_state_latest
+      , l.is_lux AS listing__is_lux_latest
+    FROM {{ source_schema }}.fct_views v
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l
+      ON l.listing_id = v.listing_id
+    LEFT OUTER JOIN {{ source_schema }}.dim_users_latest u
+      ON u.user_id = v.user_id
+    GROUP BY
+      u.home_state_latest
+      , l.is_lux
+---
+integration_test:
+  name: groupby_local_identifier
+  description: Query a metric and group by a local identifier.
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["listing"]
+  check_query: |
+    SELECT
+      SUM(booking_value) AS booking_value
+      , listing_id AS listing
+    FROM {{ source_schema }}.fct_bookings
+    GROUP BY
+      listing_id
+---
+integration_test:
+  name: groupby_local_identifier_and_dim
+  description: Query a metric and group by a local identifier and local dimension.
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["listing", "metric_time"]
+  check_query: |
+    SELECT
+      SUM(booking_value) AS booking_value
+      , ds AS metric_time__day
+      , listing_id AS listing
+    FROM {{ source_schema }}.fct_bookings
+    GROUP BY
+      listing_id
+      , ds
+---
+integration_test:
+  name: groupby_local_identifier_and_remote_dimension
+  description: Query a metric and group by a local identifier and non local dimension.
+  model: SIMPLE_MODEL
+  metrics: ["views"]
+  group_bys: ["user__home_state_latest", "listing"]
+  check_query: |
+    SELECT
+      SUM(1) AS views
+      , u.home_state_latest AS user__home_state_latest
+      , v.listing_id AS listing
+    FROM {{ source_schema }}.fct_views v
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l
+      ON l.listing_id = v.listing_id
+    LEFT OUTER JOIN {{ source_schema }}.dim_users_latest u
+      ON u.user_id = v.user_id
+    GROUP BY
+      v.listing_id
+      , u.home_state_latest
+---
+integration_test:
+  name: local_partition_dimension
+  description: Query a metric and group by a partition dimension both in dundered and non dundered forms.
+  model: SIMPLE_MODEL
+  metrics: ["identity_verifications"]
+  group_bys: ["metric_time", "verification__ds"]
+  check_query: |
+    SELECT
+      SUM(1) AS identity_verifications
+      , ds AS metric_time__day
+      , ds AS verification__ds__day
+    FROM {{ source_schema }}.fct_id_verifications
+    GROUP BY
+      ds
+---
+integration_test:
+  name: local_partition_dimension_with_other_dims
+  description: Query a metric and group by a partition dimension both in dundered and non dundered forms.
+  model: SIMPLE_MODEL
+  metrics: ["identity_verifications"]
+  group_bys: ["metric_time", "user__home_state"]
+  check_query: |
+    SELECT
+      SUM(1) AS identity_verifications
+      , u.home_state AS user__home_state
+      , v.ds AS metric_time__day
+    FROM {{ source_schema }}.fct_id_verifications v
+    LEFT OUTER JOIN {{ source_schema }}.dim_users u
+      ON u.user_id = v.user_id
+      AND u.ds = v.ds
+    GROUP BY
+      v.ds
+      , u.home_state
+---
+integration_test:
+  name: query_dimension_only
+  description: Query dimension only
+  model: SIMPLE_MODEL
+  group_bys: ["user__home_state"]
+  check_query: |
+    SELECT
+      u.home_state AS user__home_state
+    FROM {{ source_schema }}.dim_users u
+    GROUP BY
+      u.home_state
+---
+integration_test:
+  name: query_dimensions_only
+  description: Query multiple dimensions without metrics
+  model: SIMPLE_MODEL
+  group_bys: ["user__ds__day", "user__home_state"]
+  check_query: |
+    SELECT
+      u.home_state AS user__home_state
+      , u.ds AS user__ds__day
+    FROM {{ source_schema }}.dim_users u
+    GROUP BY
+      u.ds
+      , u.home_state
+---
+integration_test:
+  name: query_dimensions_from_different_tables
+  description: Query multiple dimensions without metrics, requiring a join
+  model: SIMPLE_MODEL
+  group_bys: ["user__home_state_latest", "listing__is_lux_latest"]
+  check_query: |
+    SELECT
+      u.home_state_latest AS user__home_state_latest
+    , l.is_lux AS listing__is_lux_latest
+    FROM {{ source_schema }}.dim_listings_latest l
+    FULL OUTER JOIN {{ source_schema }}.dim_users_latest u
+      ON u.user_id = l.user_id
+    GROUP BY
+      u.home_state_latest
+      , l.is_lux
+---
+integration_test:
+  name: query_time_dimension_without_granularity
+  description: Query just a time dimension, no granularity specified. Should assume default granularity for dimension.
+  model: SIMPLE_MODEL
+  group_bys: [ "verification__ds"]
+  check_query: |
+    SELECT
+      v.ds as verification__ds__day
+    FROM {{ source_schema }}.fct_id_verifications v
+    GROUP BY
+      v.ds
+---
+integration_test:
+  name: query_non_default_time_dimension_without_granularity
+  description: Query just a time dimension, no granularity specified. Should assume default granularity for dimension.
+  model: EXTENDED_DATE_MODEL
+  group_bys: [ "booking_monthly__ds"]
+  check_query: |
+    SELECT
+      ds AS booking_monthly__ds__month
+    FROM {{ source_schema }}.fct_bookings_extended_monthly
+    GROUP BY
+      ds
+---
+integration_test:
+  name: query_dimension_with_constraint_from_diff_source
+  description: Query dimenension only with where constraint, where constraint requires a join
+  model: SIMPLE_MODEL
+  group_bys: ["user__home_state_latest"]
+  where_filter: "{{ render_dimension_template('listing__country_latest') }} = 'us'"
+  check_query: |
+    SELECT
+      user__home_state_latest
+    FROM (
+      SELECT
+        l.country AS listing__country_latest
+        , u.home_state_latest AS user__home_state_latest
+      FROM {{ source_schema }}.dim_listings_latest l
+      FULL OUTER JOIN {{ source_schema }}.dim_users_latest u ON l.user_id = u.user_id
+    ) outer_subq
+    WHERE listing__country_latest = 'us'
+    GROUP BY user__home_state_latest
+---
+integration_test:
+  name: metric_time_only
+  description: Query metric_time alone
+  model: SIMPLE_MODEL
+  group_bys: ["metric_time"]
+  check_query: |
+    SELECT
+      {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS metric_time__day
+    FROM {{ source_schema }}.mf_time_spine
+    GROUP BY {{ render_date_trunc("ds", TimeGranularity.DAY) }}
+---
+integration_test:
+  name: metric_time_week
+  description: Query metric_time alone with non-default granularity
+  model: SIMPLE_MODEL
+  group_bys: ["metric_time__week"]
+  check_query: |
+    SELECT
+      {{ render_date_trunc("ds", TimeGranularity.WEEK) }} AS metric_time__week
+    FROM {{ source_schema }}.mf_time_spine
+    GROUP BY {{ render_date_trunc("ds", TimeGranularity.WEEK) }}
+---
+integration_test:
+  name: metric_time_date_part
+  description: Query metric_time alone with date part
+  model: SIMPLE_MODEL
+  group_by_objs: [{"name": "metric_time", "date_part": "dow"}]
+  check_query: |
+    SELECT
+      {{ render_extract("ds", DatePart.DOW) }} AS metric_time__extract_dow
+    FROM {{ source_schema }}.mf_time_spine
+    GROUP BY {{ render_extract("ds", DatePart.DOW) }}
+---
+integration_test:
+  name: metric_time_with_other_dimensions
+  description: Query metric_time with other dimensions and filters
+  model: SIMPLE_MODEL
+  group_bys: ["metric_time", "metric_time__month", "user__home_state_latest", "listing__is_lux_latest"]
+  check_query: |
+    SELECT
+      {{ render_date_trunc("ts.ds", TimeGranularity.DAY) }} AS metric_time__day
+      , {{ render_date_trunc("ts.ds", TimeGranularity.MONTH) }} AS metric_time__month
+      , l.is_lux AS listing__is_lux_latest
+      , u.home_state_latest AS user__home_state_latest
+    FROM {{ source_schema }}.dim_listings_latest l
+    CROSS JOIN
+      {{ source_schema }}.mf_time_spine ts
+    FULL OUTER JOIN
+      {{ source_schema }}.dim_users_latest u
+    ON
+      l.user_id = u.user_id
+    GROUP BY
+      {{ render_date_trunc("ts.ds", TimeGranularity.DAY) }}
+      , {{ render_date_trunc("ts.ds", TimeGranularity.MONTH) }}
+      , l.is_lux
+      , u.home_state_latest
+---
+integration_test:
+  name: query_dimensions_with_time_constraint
+  description: Query dimensions with time constraint
+  model: SIMPLE_MODEL
+  group_bys: ["user__home_state_latest", "listing__country_latest", "metric_time__day"]
+  time_constraint: ["2020-01-03", "2020-01-03"]
+  check_query: |
+    SELECT
+      {{ render_date_trunc("t.ds", TimeGranularity.DAY) }} AS metric_time__day
+      , l.country AS listing__country_latest
+      , u.home_state_latest AS user__home_state_latest
+    FROM {{ source_schema }}.dim_listings_latest l
+    CROSS JOIN {{ source_schema }}.mf_time_spine t
+    FULL OUTER JOIN {{ source_schema }}.dim_users_latest u ON l.user_id = u.user_id
+    WHERE {{ render_time_constraint(render_date_trunc("t.ds", TimeGranularity.DAY), "2020-01-03", "2020-01-03") }}
+    GROUP BY
+      {{ render_date_trunc("t.ds", TimeGranularity.DAY) }}
+      , l.country
+      , u.home_state_latest
+---
+integration_test:
+  name: query_dimension_only_with_constraint
+  description: Query dimenension only with where constraint
+  model: SIMPLE_MODEL
+  group_bys: ["user__home_state"]
+  where_filter: "{{ render_dimension_template('user__home_state') }} = 'CA'"
+  check_query: |
+    SELECT
+      u.home_state AS user__home_state
+    FROM {{ source_schema }}.dim_users u
+    WHERE u.home_state = 'CA'
+    GROUP BY
+      u.home_state
+---
+integration_test:
+  name: min_max_only_categorical
+  description: Get min and max of a categorical dimension
+  model: SIMPLE_MODEL
+  group_bys: ["user__home_state"]
+  min_max_only: true
+  check_query: |
+    SELECT
+      MIN(user__home_state) AS user__home_state__min
+      , MAX(user__home_state) AS user__home_state__max
+    FROM (
+      SELECT
+        u.home_state AS user__home_state
+      FROM {{ source_schema }}.dim_users u
+      GROUP BY
+        u.home_state
+    ) outer_subq
+---
+integration_test:
+  name: min_max_only_time
+  description: Get min and max of a time dimension
+  model: SIMPLE_MODEL
+  group_bys: ["verification__ds"]
+  min_max_only: true
+  check_query: |
+    SELECT
+      MIN(verification__ds__day) AS verification__ds__day__min
+      , MAX(verification__ds__day) AS verification__ds__day__max
+    FROM (
+      SELECT
+        v.ds as verification__ds__day
+      FROM {{ source_schema }}.fct_id_verifications v
+      GROUP BY
+        v.ds
+    ) outer_subq
+---
+integration_test:
+  name: min_max_only_time_month
+  description: Get min and max of a time dimension with month granularity
+  model: SIMPLE_MODEL
+  group_bys: ["verification__ds__month"]
+  min_max_only: true
+  check_query: |
+    SELECT
+      MIN(verification__ds__month) AS verification__ds__month__min
+      , MAX(verification__ds__month) AS verification__ds__month__max
+    FROM (
+      SELECT
+        {{ render_date_trunc("v.ds", TimeGranularity.MONTH) }} as verification__ds__month
+      FROM {{ source_schema }}.fct_id_verifications v
+      GROUP BY
+        {{ render_date_trunc("v.ds", TimeGranularity.MONTH) }}
+    ) outer_subq
+---
+integration_test:
+  name: min_max_metric_time
+  description: Get min and max of metric_time
+  model: SIMPLE_MODEL
+  group_bys: ["metric_time"]
+  min_max_only: true
+  check_query: |
+    SELECT
+      MIN({{ render_date_trunc('ds', TimeGranularity.DAY) }}) AS metric_time__day__min
+      , MAX({{ render_date_trunc('ds', TimeGranularity.DAY) }}) AS metric_time__day__max
+    FROM {{ source_schema }}.mf_time_spine
+---
+integration_test:
+  name: distinct_values_query_with_metric_filter
+  description: Query without metrics using a metric filter
+  model: SIMPLE_MODEL
+  group_bys: ["listing"]
+  where_filter: "{{ render_metric_template('bookings', ['listing']) }} > 2"
+  check_query: |
+    SELECT
+      listing
+    FROM (
+      SELECT
+        l.listing_id AS listing
+        , a.bookings AS listing__bookings
+      FROM {{ source_schema }}.dim_lux_listing_id_mapping l
+      FULL OUTER JOIN (
+        SELECT
+          listing_id AS listing
+          , SUM(1) AS bookings
+        FROM {{ source_schema }}.fct_bookings
+        GROUP BY listing_id
+      ) a
+      ON l.listing_id = a.listing
+    ) outer_subq
+    WHERE listing__bookings > 2
+    GROUP BY listing
+---
+integration_test:
+  name: sub_daily_metric_time
+  description: Query metric_time alone with a sub-daily granularity
+  model: SIMPLE_MODEL
+  group_bys: ["metric_time__hour"]
+  check_query: |
+    SELECT
+      {{ render_date_trunc("ts", TimeGranularity.HOUR) }} AS metric_time__hour
+    FROM {{ source_schema }}.mf_time_spine_hour
+    GROUP BY
+      {{ render_date_trunc("ts", TimeGranularity.HOUR) }}
+---
+integration_test:
+  name: sub_daily_time_dimension
+  description: Query a time dimension alone with a sub-daily granularity
+  model: SIMPLE_MODEL
+  group_bys: ["user__bio_added_ts__second"]
+  check_query: |
+    SELECT
+      {{ render_date_trunc("bio_added_ts", TimeGranularity.SECOND) }} AS user__bio_added_ts__second
+    FROM {{ source_schema }}.dim_users
+    GROUP BY
+      {{ render_date_trunc("bio_added_ts", TimeGranularity.SECOND) }}
+---
+integration_test:
+  name: no_dedupe
+  description: Query without dedupe
+  model: SIMPLE_MODEL
+  group_bys: ["user__home_state", "metric_time__month"]
+  apply_group_by: false
+  where_filter: "{{ render_dimension_template('listing__country_latest') }} = 'us'"
+  check_query: |
+    SELECT
+      u.home_state AS user__home_state
+      , {{ render_date_trunc("ts.ds", TimeGranularity.MONTH) }} AS metric_time__month
+    FROM {{ source_schema }}.dim_listings_latest l
+    CROSS JOIN {{ source_schema }}.mf_time_spine ts
+    FULL OUTER JOIN {{ source_schema }}.dim_users u ON l.user_id = u.user_id
+    WHERE l.country = 'us'
+---
+integration_test:
+  name: saved_query_no_dedupe
+  description: Query without metrics using a saved query and no group by
+  model: SIMPLE_MODEL
+  saved_query_name: dimensions_only
+  apply_group_by: false
+  where_filter: "{{ render_dimension_template('listing__country_latest') }} = 'us'"
+  check_query: |
+    SELECT
+      {{ render_date_trunc("ds", TimeGranularity.MONTH) }} AS metric_time__month
+      , l.capacity AS listing__capacity_latest
+    FROM {{ source_schema }}.dim_listings_latest l
+    CROSS JOIN {{ source_schema }}.mf_time_spine ts
+    WHERE l.country = 'us'

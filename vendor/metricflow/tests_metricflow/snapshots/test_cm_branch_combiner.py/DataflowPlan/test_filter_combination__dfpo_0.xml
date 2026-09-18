@@ -1,0 +1,23 @@
+test_name: test_filter_combination
+test_filename: test_cm_branch_combiner.py
+docstring:
+  Tests combining a single node.
+---
+<DataflowPlan>
+    <WriteToResultDataTableNode>
+        <!-- description = 'Write to DataTable' -->
+        <!-- node_id = NodeId(id_str='wrd_0') -->
+        <SelectorNode>
+            <!-- description = "Select: ['__bookings', '__booking_value']" -->
+            <!-- node_id = NodeId(id_str='pfe_2') -->
+            <!-- include_spec = SimpleMetricInputSpec(element_name='bookings') -->
+            <!-- include_spec = SimpleMetricInputSpec(element_name='booking_value') -->
+            <!-- distinct = False -->
+            <ReadSqlSourceNode>
+                <!-- description = "Read From SemanticModelDataSet('bookings_source')" -->
+                <!-- node_id = NodeId(id_str='rss_28001') -->
+                <!-- data_set = SemanticModelDataSet('bookings_source') -->
+            </ReadSqlSourceNode>
+        </SelectorNode>
+    </WriteToResultDataTableNode>
+</DataflowPlan>

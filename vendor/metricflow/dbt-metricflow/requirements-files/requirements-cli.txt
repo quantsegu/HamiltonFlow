@@ -1,0 +1,10 @@
+# Internal dependencies
+dbt-core>=1.11, <1.13
+
+# CLI-related
+Jinja2>=3.1.6, <3.7.0
+halo>=0.0.31, <0.1.0
+update-checker>=0.18.0, <0.19.0
+
+# Bug with mypy: https://github.com/pallets/click/issues/2558#issuecomment-1656546003
+click>=8.1.6

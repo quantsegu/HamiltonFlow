@@ -1,0 +1,35 @@
+test_name: test_suggestions_for_multiple_metrics
+test_filename: test_suggestions.py
+---
+Got error(s) during query resolution.
+
+Error #1:
+  Message:
+
+    The given input does not match any of the available group-by-items for
+    SimpleMetric('listings'). Common issues are:
+
+      * Incorrect names.
+      * No valid join paths exist from the measure to the group-by-item.
+        (fan-out join support is pending).
+      * There are multiple matching join paths.
+        (disambiguation support is pending).
+
+    Suggestions:
+      [
+        'listing__ds__day',
+        'listing__user',
+        'listing__lux_listing',
+        'listing__is_lux_latest',
+        'listing__country_latest',
+        'listing__capacity_latest',
+      ]
+
+  Query Input:
+
+    booking__ds
+
+  Issue Location:
+
+    [Resolve Query(['bookings', 'listings'])]
+      -> [Resolve SimpleMetric('listings')]

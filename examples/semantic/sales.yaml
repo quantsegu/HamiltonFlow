@@ -1,0 +1,94 @@
+semantic_model:
+  name: orders
+  node_relation:
+    schema_name: main
+    alias: orders
+  defaults:
+    agg_time_dimension: ordered_at
+  entities:
+    - name: order
+      type: primary
+      expr: order_id
+    - name: customer
+      type: foreign
+      expr: customer_id
+  measures:
+    - name: order_amount
+      expr: amount
+      agg: sum
+    - name: order_count
+      expr: order_id
+      agg: count_distinct
+    - name: buyer_count
+      expr: customer_id
+      agg: count_distinct
+  dimensions:
+    - name: ordered_at
+      type: time
+      type_params:
+        time_granularity: day
+    - name: status
+      type: categorical
+---
+semantic_model:
+  name: customers
+  node_relation:
+    schema_name: main
+    alias: customers
+  entities:
+    - name: customer
+      type: primary
+      expr: customer_id
+  dimensions:
+    - name: country
+      type: categorical
+---
+metric:
+  name: revenue
+  type: simple
+  type_params:
+    measure: order_amount
+---
+metric:
+  name: orders
+  type: simple
+  type_params:
+    measure: order_count
+---
+metric:
+  name: buyers
+  type: simple
+  type_params:
+    measure: buyer_count
+---
+metric:
+  name: average_order_value
+  type: ratio
+  type_params:
+    numerator:
+      name: revenue
+    denominator:
+      name: orders
+---
+metric:
+  name: revenue_after_fee
+  type: derived
+  type_params:
+    expr: revenue * 0.9
+    metrics:
+      - name: revenue
+---
+metric:
+  name: running_revenue
+  type: cumulative
+  type_params:
+    measure: order_amount
+---
+project_configuration:
+  time_spines:
+    - node_relation:
+        schema_name: main
+        alias: time_spine
+      primary_column:
+        name: date_day
+        time_granularity: day

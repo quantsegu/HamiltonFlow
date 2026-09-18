@@ -1,0 +1,15 @@
+test_name: test_snapshot[no_metrics]
+test_filename: test_resolution_dags.py
+docstring:
+  Checks that the resolution DAGs have been built correctly via checks against a snapshot.
+---
+<GroupByItemResolutionDag>
+    <QueryGroupByItemResolutionNode>
+        <!-- description = 'Output the group-by items for query.' -->
+        <!-- node_id = NodeId(id_str='qr_0') -->
+        <NoMetricsGroupByItemSourceNode>
+            <!-- description = 'Output the available group-by-items for a query without any metrics.' -->
+            <!-- node_id = NodeId(id_str='vr_0') -->
+        </NoMetricsGroupByItemSourceNode>
+    </QueryGroupByItemResolutionNode>
+</GroupByItemResolutionDag>

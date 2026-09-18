@@ -1,0 +1,10 @@
+test_name: test_saved_query_override_order_by_and_limit
+test_filename: test_query_output.py
+---
+metric_time__day       listing__capacity_latest    bookings  views
+-------------------  --------------------------  ----------  -------
+2020-02-01T00:00:00                           3           1
+2020-02-03T00:00:00                           3           1
+2020-02-05T00:00:00                           3           1
+2020-02-10T00:00:00                           3           1
+2020-02-12T00:00:00                           3           1

@@ -1,0 +1,8 @@
+test_name: test_saved_query_with_where
+test_filename: test_cli.py
+---
+metric_time__day     customer__customer_country      transactions    quick_buy_transactions
+-------------------  ----------------------------  --------------  ------------------------
+2022-03-10T00:00:00  US                                         1                         1
+2022-03-11T00:00:00  US                                         1                         0
+2022-03-12T00:00:00  US                                         1                         0

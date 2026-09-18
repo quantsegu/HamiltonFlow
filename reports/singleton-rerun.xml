@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="6" time="10.660" timestamp="2026-09-18T18:31:45.769509+02:00" hostname="ip-192-168-12-31.eu-central-1.compute.internal"><testcase classname="tests_metricflow_semantics.toolkit.test_singleton" name="test_is_expression" time="0.001" /><testcase classname="tests_metricflow_semantics.toolkit.test_singleton" name="test_set_equals" time="1.192" /><testcase classname="tests_metricflow_semantics.toolkit.test_singleton" name="test_set_in" time="1.034" /><testcase classname="tests_metricflow_semantics.toolkit.test_singleton" name="test_tuple_equals" time="1.547" /><testcase classname="tests_metricflow_semantics.toolkit.test_singleton" name="test_create_new" time="5.540"><failure message="AssertionError: The performance factor is lower than the minimum expected.&#10;  expected_min_performance_factor: 0.4&#10;  actual_performance_factor: 0.39&#10;  attempt_count: 3">vendor/metricflow/tests_metricflow_semantics/toolkit/test_singleton.py:116: in test_create_new
+    assert_performance_factor(
+vendor/metricflow/metricflow_semantics/test_helpers/performance/performance_helpers.py:69: in assert_performance_factor
+    raise AssertionError(
+E   AssertionError: The performance factor is lower than the minimum expected.
+E     expected_min_performance_factor: 0.4
+E     actual_performance_factor: 0.39
+E     attempt_count: 3</failure></testcase><testcase classname="tests_metricflow_semantics.toolkit.test_singleton" name="test_create_existing" time="1.254" /></testsuite></testsuites>

@@ -1,0 +1,205 @@
+[build-system]
+requires = ["hatchling>=1.27.0,<1.28.0", "hatch-requirements-txt >= 0.4.1, <0.5.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "metricflow"
+description = "Translates a simple metric definition into reusable SQL and executes it against the SQL engine of your choice."
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+license = "Apache-2.0"
+keywords = []
+authors = [
+  {name = "dbt Labs"}
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+# Dependencies are specified through the `hatch-requirements-txt` plug-in.
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "metricflow/__about__.py"
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = [
+  "requirements-files/requirements.txt",
+]
+
+[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+dev-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+]
+postgres-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-postgres.txt",
+]
+bigquery-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-bigquery.txt",
+]
+databricks-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-databricks.txt",
+]
+redshift-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-redshift.txt",
+]
+snowflake-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-snowflake.txt",
+]
+trino-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-trino.txt",
+]
+vertica-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-vertica.txt",
+]
+
+athena-env-requirements = [
+  "requirements-files/dev-env-requirements.txt",
+  "requirements-files/requirements-athena.txt",
+]
+
+
+[project.urls]
+Documentation = "https://docs.getdbt.com/docs/build/about-metricflow"
+"Source Code" = "https://github.com/dbt-labs/metricflow"
+
+
+# There are files that hatch will always include as well (e.g. the LICENSE file).
+# See hatch build docs for more details.
+[tool.hatch.build.targets.sdist]
+packages = ["metricflow", "metricflow_semantics", "metricflow_semantic_interfaces"]
+
+# include doesn't seem to work with packages, so using force include.
+[tool.hatch.build.targets.sdist.force-include]
+"ATTRIBUTION.md" = "ATTRIBUTION.md"
+"msi_pydantic_shim.py" = "msi_pydantic_shim.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["metricflow", "metricflow_semantics", "metricflow_semantic_interfaces"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"ATTRIBUTION.md" = "ATTRIBUTION.md"
+"msi_pydantic_shim.py" = "msi_pydantic_shim.py"
+
+
+# Environment setup
+[tool.hatch.envs.dev-env]
+description = "Environment for development. Includes a DuckDB-backed client."
+run = "run-coverage --no-cov"
+
+features = ["dev-env-requirements"]
+
+
+[tool.hatch.envs.postgres-env.env-vars]
+MF_SQL_ENGINE_URL="postgresql://metricflow@localhost:5432/metricflow"
+MF_SQL_ENGINE_PASSWORD="metricflowing"
+
+[tool.hatch.envs.postgres-env]
+description = "Dev environment for working with PostgreSQL"
+template = "dev-env"
+features = ["postgres-env-requirements"]
+
+
+## NOTE: All environments below should have their authentication credentials
+## configured independently of the hatch env construction
+
+[tool.hatch.envs.bigquery-env]
+description = "Dev environment for working with BigQuery"
+template = "dev-env"
+features = ["bigquery-env-requirements"]
+
+[tool.hatch.envs.databricks-env]
+description = "Dev environment for working with Databricks"
+template = "dev-env"
+features = ["databricks-env-requirements"]
+
+
+[tool.hatch.envs.redshift-env]
+description = "Dev environment for working with Redshift"
+template = "dev-env"
+features = ["redshift-env-requirements"]
+
+
+[tool.hatch.envs.snowflake-env]
+description = "Dev environment for working with Snowflake"
+template = "dev-env"
+features = ["snowflake-env-requirements"]
+
+
+[tool.hatch.envs.trino-env.env-vars]
+MF_SQL_ENGINE_URL = "trino://trino@localhost:8080/memory"
+MF_SQL_ENGINE_PASSWORD=""
+
+[tool.hatch.envs.trino-env]
+description = "Dev environment for working with Trino"
+template = "dev-env"
+features = ["trino-env-requirements"]
+
+[tool.hatch.envs.athena-env]
+description = "Dev environment for working with the Athena adapter"
+template = "dev-env"
+features = ["athena-env-requirements"]
+
+
+[tool.hatch.envs.vertica-env.env-vars]
+MF_SQL_ENGINE_URL="vertica://metricflow@localhost:5433/metricflow"
+MF_SQL_ENGINE_PASSWORD="metricflowing"
+
+[tool.hatch.envs.vertica-env]
+description = "Dev environment for working with Vertica"
+template = "dev-env"
+features = ["vertica-env-requirements"]
+
+[tool.hatch.envs.nuitka-build]
+description = "Nuitka compilation environment for building a standalone MetricFlow binary."
+template = "dev-env"
+extra-dependencies = ["nuitka==4.1.2"]
+
+[tool.hatch.envs.nuitka-build.scripts]
+compile = [
+  "python -m nuitka --standalone --follow-imports --assume-yes-for-downloads --include-package=metricflow --include-package=metricflow_semantics --include-package=metricflow_semantic_interfaces --output-dir=sidecar/ sidecar/mf_entry.py",
+]
+validate = [
+  "python sidecar/validate_mf_entry.py",
+]
+build-and-validate = [
+  "hatch run nuitka-build:compile",
+  "hatch run nuitka-build:validate",
+]
+
+
+[tool.black]
+line-length = 120
+
+[tool.pytest.ini_options]
+# Many deprecation warnings come from 3rd-party libraries and make the
+# output of pytest noisy. Since no action is going to be taken, hide those
+# warnings.
+filterwarnings = [
+  "ignore::DeprecationWarning:dbt_common.*:",
+  "ignore::DeprecationWarning:halo.*:",
+  # `protobuff` issue: https://github.com/protocolbuffers/protobuf/issues/15077
+  # protobuff is specified by `dbt-core`
+  'ignore:.*Type google.*:DeprecationWarning',
+]
+python_functions = "test_* populate_source_schema"
+addopts = "--ignore tests_metricflow/performance/"

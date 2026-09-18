@@ -1,0 +1,115 @@
+test_name: test_derived_cumulative_metric_with_non_default_grain
+test_filename: test_dataflow_plan_builder.py
+docstring:
+  Test querying a derived metric with a cumulative input metric using non-default granularity.
+---
+<DataflowPlan>
+    <WriteToResultDataTableNode>
+        <!-- description = 'Write to DataTable' -->
+        <!-- node_id = NodeId(id_str='wrd_0') -->
+        <ComputeMetricsNode>
+            <!-- description = 'Compute Metrics via Expressions' -->
+            <!-- node_id = NodeId(id_str='cm_2') -->
+            <!-- metric_spec = MetricSpec(element_name='trailing_2_months_revenue_sub_10') -->
+            <WindowReaggregationNode>
+                <!-- description = 'Re-aggregate Metrics via Window Functions' -->
+                <!-- node_id = NodeId(id_str='wr_0') -->
+                <!-- metric_spec = MetricSpec(element_name='trailing_2_months_revenue', alias='t2mr') -->
+                <!-- order_by_spec =                                                                 -->
+                <!--   TimeDimensionSpec(                                                            -->
+                <!--     element_name='metric_time',                                                 -->
+                <!--     time_granularity=ExpandedTimeGranularity(name='day', base_granularity=DAY), -->
+                <!--   )                                                                             -->
+                <!-- partition_by_specs =                                                                  -->
+                <!--   (                                                                                   -->
+                <!--     TimeDimensionSpec(                                                                -->
+                <!--       element_name='metric_time',                                                     -->
+                <!--       time_granularity=ExpandedTimeGranularity(name='month', base_granularity=MONTH), -->
+                <!--     ),                                                                                -->
+                <!--   )                                                                                   -->
+                <ComputeMetricsNode>
+                    <!-- description = 'Compute Metrics via Expressions' -->
+                    <!-- node_id = NodeId(id_str='cm_1') -->
+                    <!-- metric_spec = MetricSpec(element_name='trailing_2_months_revenue', alias='t2mr') -->
+                    <ComputeMetricsNode>
+                        <!-- description = 'Compute Metrics via Expressions' -->
+                        <!-- node_id = NodeId(id_str='cm_0') -->
+                        <!-- metric_spec = MetricSpec(element_name='revenue') -->
+                        <AggregateSimpleMetricInputsNode>
+                            <!-- description = 'Aggregate Inputs for Simple Metrics' -->
+                            <!-- node_id = NodeId(id_str='am_0') -->
+                            <!-- null_fill_value_mapping = {'revenue': None} -->
+                            <SelectorNode>
+                                <!-- description = "Select: ['__revenue', 'metric_time__month', 'metric_time__day']" -->
+                                <!-- node_id = NodeId(id_str='pfe_1') -->
+                                <!-- include_spec = SimpleMetricInputSpec(element_name='revenue') -->
+                                <!-- include_spec =                                                                      -->
+                                <!--   TimeDimensionSpec(                                                                -->
+                                <!--     element_name='metric_time',                                                     -->
+                                <!--     time_granularity=ExpandedTimeGranularity(name='month', base_granularity=MONTH), -->
+                                <!--   )                                                                                 -->
+                                <!-- include_spec =                                                                  -->
+                                <!--   TimeDimensionSpec(                                                            -->
+                                <!--     element_name='metric_time',                                                 -->
+                                <!--     time_granularity=ExpandedTimeGranularity(name='day', base_granularity=DAY), -->
+                                <!--   )                                                                             -->
+                                <!-- distinct = False -->
+                                <SelectorNode>
+                                    <!-- description = "Select: ['__revenue', 'metric_time__month', 'metric_time__day']" -->
+                                    <!-- node_id = NodeId(id_str='pfe_0') -->
+                                    <!-- include_spec = SimpleMetricInputSpec(element_name='revenue') -->
+                                    <!-- include_spec =                                -->
+                                    <!--   TimeDimensionSpec(                          -->
+                                    <!--     element_name='metric_time',               -->
+                                    <!--     time_granularity=ExpandedTimeGranularity( -->
+                                    <!--       name='month',                           -->
+                                    <!--       base_granularity=MONTH,                 -->
+                                    <!--     ),                                        -->
+                                    <!--   )                                           -->
+                                    <!-- include_spec =                                                                  -->
+                                    <!--   TimeDimensionSpec(                                                            -->
+                                    <!--     element_name='metric_time',                                                 -->
+                                    <!--     time_granularity=ExpandedTimeGranularity(name='day', base_granularity=DAY), -->
+                                    <!--   )                                                                             -->
+                                    <!-- distinct = False -->
+                                    <JoinOverTimeRangeNode>
+                                        <!-- description = 'Join Self Over Time Range' -->
+                                        <!-- node_id = NodeId(id_str='jotr_0') -->
+                                        <!-- queried_agg_time_dimension_specs =              -->
+                                        <!--   (                                             -->
+                                        <!--     TimeDimensionSpec(                          -->
+                                        <!--       element_name='metric_time',               -->
+                                        <!--       time_granularity=ExpandedTimeGranularity( -->
+                                        <!--         name='month',                           -->
+                                        <!--         base_granularity=MONTH,                 -->
+                                        <!--       ),                                        -->
+                                        <!--     ),                                          -->
+                                        <!--     TimeDimensionSpec(                          -->
+                                        <!--       element_name='metric_time',               -->
+                                        <!--       time_granularity=ExpandedTimeGranularity( -->
+                                        <!--         name='day',                             -->
+                                        <!--         base_granularity=DAY,                   -->
+                                        <!--       ),                                        -->
+                                        <!--     ),                                          -->
+                                        <!--   )                                             -->
+                                        <!-- window = TimeWindow(count=2, granularity='month') -->
+                                        <MetricTimeDimensionTransformNode>
+                                            <!-- description = "Metric Time Dimension 'ds'" -->
+                                            <!-- node_id = NodeId(id_str='sma_28015') -->
+                                            <!-- aggregation_time_dimension = 'ds' -->
+                                            <ReadSqlSourceNode>
+                                                <!-- description = "Read From SemanticModelDataSet('revenue')" -->
+                                                <!-- node_id = NodeId(id_str='rss_28026') -->
+                                                <!-- data_set = SemanticModelDataSet('revenue') -->
+                                            </ReadSqlSourceNode>
+                                        </MetricTimeDimensionTransformNode>
+                                    </JoinOverTimeRangeNode>
+                                </SelectorNode>
+                            </SelectorNode>
+                        </AggregateSimpleMetricInputsNode>
+                    </ComputeMetricsNode>
+                </ComputeMetricsNode>
+            </WindowReaggregationNode>
+        </ComputeMetricsNode>
+    </WriteToResultDataTableNode>
+</DataflowPlan>

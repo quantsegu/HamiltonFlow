@@ -1,0 +1,10 @@
+test_name: test_list_dimensions
+test_filename: test_cli.py
+---
+• customer__country__region
+• customer__customer_country
+• customer__ds
+• metric_time
+• transaction__ds
+• transaction__is_large
+• transaction__quick_buy_transaction

@@ -1,0 +1,31 @@
+test_name: test_available_group_by_items[no_metrics]
+test_filename: test_available_group_by_items.py
+---
+[
+  "TimeDimension('metric_time', 'alien_day')",
+  "TimeDimension('metric_time', 'day')",
+  "TimeDimension('metric_time', 'hour')",
+  "TimeDimension('metric_time', 'microsecond')",
+  "TimeDimension('metric_time', 'millisecond')",
+  "TimeDimension('metric_time', 'minute')",
+  "TimeDimension('metric_time', 'month')",
+  "TimeDimension('metric_time', 'nanosecond')",
+  "TimeDimension('metric_time', 'quarter')",
+  "TimeDimension('metric_time', 'second')",
+  "TimeDimension('metric_time', 'week')",
+  "TimeDimension('metric_time', 'year')",
+  "TimeDimension('metric_time', date_part_name='day')",
+  "TimeDimension('metric_time', date_part_name='dow')",
+  "TimeDimension('metric_time', date_part_name='doy')",
+  "TimeDimension('metric_time', date_part_name='month')",
+  "TimeDimension('metric_time', date_part_name='quarter')",
+  "TimeDimension('metric_time', date_part_name='year')",
+  "TimeDimension('monthly_measure_entity__creation_time', 'month')",
+  "TimeDimension('monthly_measure_entity__creation_time', 'quarter')",
+  "TimeDimension('monthly_measure_entity__creation_time', 'year')",
+  "TimeDimension('monthly_measure_entity__creation_time', date_part_name='month')",
+  "TimeDimension('monthly_measure_entity__creation_time', date_part_name='quarter')",
+  "TimeDimension('monthly_measure_entity__creation_time', date_part_name='year')",
+  "TimeDimension('yearly_measure_entity__creation_time', 'year')",
+  "TimeDimension('yearly_measure_entity__creation_time', date_part_name='year')",
+]

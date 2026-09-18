@@ -1,0 +1,635 @@
+---
+integration_test:
+  name: windowed_cumulative_metric
+  description: Query a cumulative metric that aggregates the last 2 months.
+  model: SIMPLE_MODEL
+  metrics: ["trailing_2_months_revenue"]
+  group_bys: ["metric_time"]
+  order_bys: ["metric_time"]
+  time_constraint: ["2020-03-05", "2021-01-04"]
+  check_query: |
+    SELECT
+      SUM(b.txn_revenue) as trailing_2_months_revenue
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2020-01-05", "2021-01-04") }}
+    ) a
+    INNER JOIN (
+      SELECT
+        revenue as txn_revenue
+        , created_at AS ds
+      FROM {{ source_schema }}.fct_revenue
+    ) b
+    ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.MONTH) }}
+    WHERE {{ render_time_constraint("a.ds", "2020-03-05", "2021-01-04") }}
+    GROUP BY a.ds
+    ORDER BY a.ds
+---
+integration_test:
+  name: windowed_cumulative_metric_with_joined_dim
+  description: Query a cumulative metric that aggregates the last 2 months with a joined dimension.
+  model: SIMPLE_MODEL
+  metrics: ["trailing_2_months_revenue"]
+  group_bys: ["metric_time", "user__home_state_latest"]
+  order_bys: ["metric_time", "user__home_state_latest"]
+  time_constraint: ["2020-03-05", "2021-01-04"]
+  check_query: |
+    SELECT
+      SUM(revenue) as trailing_2_months_revenue
+      , b.user__home_state_latest as user__home_state_latest
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2020-01-05", "2021-01-04") }}
+    ) a
+    INNER JOIN (
+      SELECT
+        m.revenue as revenue
+        , u.home_state_latest as user__home_state_latest
+        , m.created_at AS ds
+      FROM {{ source_schema }}.fct_revenue m
+      LEFT OUTER JOIN {{ source_schema }}.dim_users_latest u
+      ON m.user_id = u.user_id
+      GROUP BY m.created_at, m.revenue, u.home_state_latest
+    ) b
+    ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.MONTH) }}
+    WHERE {{ render_time_constraint("a.ds", "2020-03-05", "2021-01-04") }}
+    GROUP BY a.ds, user__home_state_latest
+    ORDER by a.ds, user__home_state_latest
+---
+integration_test:
+  name: cumulative_metric_by_ds
+  description: Query a cumulative metric that aggregates revenue for all time in the past by ds.
+  model: SIMPLE_MODEL
+  metrics: ["revenue_all_time"]
+  group_bys: ["metric_time"]
+  order_bys: ["metric_time"]
+  time_constraint: ["2020-03-01", "2021-01-05"]
+  check_query: |
+    SELECT
+      SUM(revenue) AS revenue_all_time
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2020-03-01", "2021-01-05") }}
+    ) a
+    INNER JOIN (
+      SELECT
+        revenue
+        , created_at
+      FROM {{ source_schema }}.fct_revenue
+    ) b
+    ON b.created_at <= a.ds
+    GROUP BY a.ds
+    ORDER by a.ds
+---
+integration_test:
+  name: cumulative_metric_without_ds
+  description: Query a cumulative metric that aggregates revenue for all time in the past.
+  model: SIMPLE_MODEL
+  metrics: ["revenue_all_time"]
+  check_query: |
+    SELECT
+      SUM(revenue) AS revenue_all_time
+    FROM {{ source_schema }}.fct_revenue
+---
+integration_test:
+  name: multiple_cumulative_metrics
+  description: Query two different cumulative metrics.
+  model: SIMPLE_MODEL
+  metrics: ["revenue_all_time", "trailing_2_months_revenue"]
+  group_bys: ["metric_time"]
+  order_bys: ["metric_time"]
+  time_constraint: ["2020-03-31", "2021-01-05"]
+  check_query: |
+    SELECT revenue_all_time, trailing_2_months_revenue, a.ds AS metric_time__day
+    FROM (
+        SELECT
+          SUM(revenue) as revenue_all_time
+          , ds
+        FROM (
+            SELECT
+                b.revenue as revenue
+                , a.ds AS ds
+            FROM (
+              SELECT ds
+              FROM {{ mf_time_spine_source }}
+              WHERE {{ render_time_constraint("ds", "2020-03-31", "2021-01-05") }}
+            ) a
+            INNER JOIN (
+              SELECT
+                revenue
+                , created_at
+              FROM {{ source_schema }}.fct_revenue
+            ) b
+            ON b.created_at <= a.ds
+        ) a
+        GROUP BY ds
+    ) a
+    FULL OUTER JOIN (
+        SELECT
+          SUM(b.txn_revenue) as trailing_2_months_revenue
+          , a.ds
+        FROM (
+          SELECT ds
+          FROM {{ mf_time_spine_source }}
+          WHERE {{ render_time_constraint("ds", "2020-01-31", "2021-01-05") }}
+        ) a
+        INNER JOIN (
+            SELECT
+              revenue as txn_revenue
+              , created_at AS ds
+            FROM {{ source_schema }}.fct_revenue
+        ) b
+        ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.MONTH) }}
+        GROUP BY a.ds
+    ) b
+    ON a.ds = b.ds
+    WHERE {{ render_time_constraint("a.ds", "2020-03-31", "2021-01-05") }}
+    ORDER BY a.ds
+---
+integration_test:
+  name: windowed_cumulative_metric_by_time_dimension_with_granularity
+  description: Query a windowed cumulative metric by a time dimension with the granularity suffix.
+  model: SIMPLE_MODEL
+  metrics: ["trailing_2_months_revenue"]
+  group_bys: ["metric_time__day"]
+  order_bys: ["metric_time__day"]
+  time_constraint: ["2020-03-05", "2021-01-04"]
+  check_query: |
+    SELECT
+      SUM(b.txn_revenue) as trailing_2_months_revenue
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2020-01-05", "2021-01-04") }}
+    ) a
+    INNER JOIN (
+      SELECT
+        revenue as txn_revenue
+        , created_at AS ds
+      FROM {{ source_schema }}.fct_revenue
+    ) b
+    ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.MONTH) }}
+    WHERE {{ render_time_constraint("a.ds", "2020-03-05", "2021-01-04") }}
+    GROUP BY a.ds
+    ORDER BY a.ds
+---
+integration_test:
+  name: cumulative_metric_by_ds_and_limited_time
+  description: Query a cumulative metric that aggregates revenue for all time in the past for a limit time interval.
+  model: SIMPLE_MODEL
+  metrics: ["revenue_all_time"]
+  group_bys: ["metric_time"]
+  order_bys: ["metric_time"]
+  time_constraint: ["2021-01-05", "2021-01-05"]
+  check_query: |
+    SELECT
+      SUM(revenue) AS revenue_all_time
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2021-01-05", "2021-01-05") }}
+    ) a
+    INNER JOIN (
+      SELECT
+        revenue
+        , created_at
+      FROM {{ source_schema }}.fct_revenue
+    ) b
+    ON b.created_at <= a.ds
+    GROUP BY a.ds
+    ORDER by a.ds
+---
+integration_test:
+  name: non_additive_cumulative_metric_by_ds
+  description: Query a cumulative metric with a non-additive measure.
+  model: SIMPLE_MODEL
+  metrics: ["every_two_days_bookers"]
+  group_bys: ["metric_time"]
+  order_bys: ["metric_time"]
+  time_constraint: ["2019-12-31", "2020-01-04"]
+  check_query: |
+    SELECT
+      COUNT (DISTINCT(b.guest_id)) as every_two_days_bookers
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2019-12-30", "2020-01-04") }}
+    ) a
+    INNER JOIN (
+        SELECT
+          guest_id
+          , ds
+        FROM {{ source_schema }}.fct_bookings
+    ) b
+    ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.DAY) }}
+    GROUP BY a.ds
+    ORDER BY a.ds
+---
+integration_test:
+  name: non_additive_cumulative_metric_by_ds_and_limited_time
+  description: Query a cumulative metric with a non-additive measure and a limited time range.
+  model: SIMPLE_MODEL
+  metrics: ["every_two_days_bookers"]
+  group_bys: ["metric_time"]
+  order_bys: ["metric_time"]
+  time_constraint: ["2020-01-03", "2020-01-03"]
+  check_query: |
+    SELECT
+      COUNT (DISTINCT(b.guest_id)) as every_two_days_bookers
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2020-01-02", "2020-01-03") }}
+    ) a
+    INNER JOIN (
+        SELECT
+          guest_id
+          , ds
+        FROM {{ source_schema }}.fct_bookings
+    ) b
+    ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.DAY) }}
+    WHERE {{ render_time_constraint("a.ds", "2020-01-03", "2020-01-03") }}
+    GROUP BY a.ds
+    ORDER BY a.ds
+---
+integration_test:
+  name: grain_to_date_cumulative_metric
+  description: Query a cumulative metric with a non-additive measure and a limited time range.
+  model: SIMPLE_MODEL
+  metrics: ["revenue_mtd"]
+  group_bys: ["metric_time"]
+  order_bys: ["metric_time"]
+  time_constraint: ["2021-01-04", "2021-01-05"]
+  check_query: |
+    SELECT
+      SUM(b.txn_revenue) as revenue_mtd
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2021-01-01", "2021-01-05") }}
+    ) a
+    INNER JOIN (
+        SELECT
+          revenue as txn_revenue
+          , created_at AS ds
+        FROM {{ source_schema }}.fct_revenue
+    ) b
+    ON b.ds <= a.ds AND b.ds >= {{ render_date_trunc("a.ds", TimeGranularity.MONTH) }}
+    WHERE {{ render_time_constraint("a.ds", "2021-01-04", "2021-01-05") }}
+    GROUP BY a.ds
+    ORDER BY a.ds
+---
+integration_test:
+  name: cumulative_metric_by_ds_with_granularity
+  description: Query a cumulative metric that aggregates revenue for all time in the past by ds__day.
+  model: SIMPLE_MODEL
+  metrics: ["revenue_all_time"]
+  group_bys: ["metric_time__day"]
+  order_bys: ["metric_time__day"]
+  time_constraint: ["2020-01-01", "2021-01-05"]
+  check_query: |
+    SELECT
+      SUM(revenue) AS revenue_all_time
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2020-01-01", "2021-01-05") }}
+    ) a
+    INNER JOIN (
+      SELECT
+        revenue
+        , created_at
+      FROM {{ source_schema }}.fct_revenue
+    ) b
+    ON b.created_at <= a.ds
+    GROUP BY a.ds
+    ORDER by a.ds
+---
+integration_test:
+  name: cumulative_metric_with_non_adjustable_filter
+  description: Query a cumulative metric that has a time filter which cannot be adapted to cover the full input range
+  model: SIMPLE_MODEL
+  metrics: ["every_two_days_bookers"]
+  group_bys: ["metric_time__day"]
+  order_bys: ["metric_time__day"]
+  where_filter: |
+    {{ render_time_dimension_template('metric_time', 'day') }} = {{ cast_to_ts('2019-12-20') }}
+      or {{ render_time_dimension_template('metric_time', 'day') }} = {{ cast_to_ts('2020-01-04') }}
+  check_query: |
+    SELECT
+      COUNT (DISTINCT(b.guest_id)) as every_two_days_bookers
+      , a.ds AS metric_time__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2019-12-19", "2020-01-04") }}
+    ) a
+    INNER JOIN (
+        SELECT
+          guest_id
+          , ds
+        FROM {{ source_schema }}.fct_bookings
+    ) b
+    ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.DAY) }}
+    WHERE {{ render_time_constraint("a.ds", "2019-12-20", "2019-12-20") }}
+      OR {{ render_time_constraint("a.ds", "2020-01-04", "2020-01-04") }}
+    GROUP BY a.ds
+    ORDER BY a.ds
+---
+# TODO: Test is currently broken.
+#integration_test:
+#  name: cumulative_metric_month_granularity
+#  description: Query a cumulative metric that uses non-day granularity.
+#  model: EXTENDED_DATE_MODEL
+#  metrics: ["trailing_3_months_bookings"]
+#  group_bys: ["metric_time__month"]
+#  order_bys: ["metric_time__month"]
+#  time_constraint: ["2020-03-05", "2021-01-04"]
+#  check_query: |
+#    SELECT
+#      subq_3.metric_time__month
+#      , SUM(subq_2.bookings_monthly) AS trailing_3_months_bookings
+#    FROM (
+#      SELECT
+#        {{ render_date_trunc("ds", TimeGranularity.MONTH) }} AS metric_time__month
+#      FROM {{ source_schema }}.mf_time_spine
+#      WHERE {{ render_time_constraint("ds", "2020-03-01", "2021-01-31") }}
+#      GROUP BY
+#        {{ render_date_trunc("ds", TimeGranularity.MONTH) }}
+#    ) subq_3
+#    INNER JOIN (
+#      SELECT
+#        {{ render_date_trunc("ds", TimeGranularity.MONTH) }} AS metric_time__month
+#        , bookings_monthly
+#      FROM {{ source_schema }}.fct_bookings_extended_monthly
+#      WHERE {{ render_time_constraint(render_date_trunc("ds", TimeGranularity.MONTH), "2019-12-01", "2021-01-31") }}
+#    ) subq_2
+#    ON (
+#        subq_2.metric_time__month <= subq_3.metric_time__month
+#      ) AND (
+#        subq_2.metric_time__month > {{ render_date_sub("subq_3", "metric_time__month", 3, TimeGranularity.MONTH) }}
+#      )
+#    WHERE {{ render_time_constraint("subq_3.metric_time__month", "2020-03-01", "2021-01-31") }}
+#    GROUP BY
+#      subq_3.metric_time__month
+#    ORDER BY subq_3.metric_time__month
+---
+integration_test:
+  name: cumulative_metric_with_agg_time_dimension
+  description: Query a cumulative metric with its agg_time_dimension and a time constraint.
+  model: SIMPLE_MODEL
+  metrics: ["trailing_2_months_revenue"]
+  group_bys: ["revenue_instance__ds__day"]
+  order_bys: ["revenue_instance__ds__day"]
+  where_filter: '{{ render_time_constraint("revenue_instance__ds__day", "2020-03-05", "2021-01-04") }}'
+  check_query: |
+    SELECT
+      SUM(b.txn_revenue) as trailing_2_months_revenue
+      , a.ds AS revenue_instance__ds__day
+    FROM (
+      SELECT ds
+      FROM {{ mf_time_spine_source }}
+      WHERE {{ render_time_constraint("ds", "2020-01-05", "2021-01-04") }}
+    ) a
+    INNER JOIN (
+      SELECT
+        revenue as txn_revenue
+        , created_at AS ds
+      FROM {{ source_schema }}.fct_revenue
+    ) b
+    ON b.ds <= a.ds AND b.ds > {{ render_date_sub("a", "ds", 2, TimeGranularity.MONTH) }}
+    WHERE {{ render_time_constraint("a.ds", "2020-03-05", "2021-01-04") }}
+    GROUP BY a.ds
+    ORDER BY a.ds
+---
+integration_test:
+  name: all_time_metric_with_non_default_grains
+  description: Query a cumulative all-time metric with non-default grains
+  model: SIMPLE_MODEL
+  metrics: ["revenue_all_time"]
+  group_bys: ["metric_time__week", "metric_time__quarter"]
+  check_query: |
+    SELECT
+      metric_time__week
+      , metric_time__quarter
+      , revenue_all_time
+    FROM (
+      SELECT
+        metric_time__week
+        , metric_time__quarter
+        , LAST_VALUE(revenue_all_time) OVER (
+          PARTITION BY metric_time__week, metric_time__quarter
+          ORDER BY metric_time__day
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS revenue_all_time
+      FROM (
+        SELECT
+          t.ds AS metric_time__day
+          , {{ render_date_trunc("T.ds", TimeGranularity.WEEK) }} AS metric_time__week
+          , {{ render_date_trunc("t.ds", TimeGranularity.QUARTER) }} AS metric_time__quarter
+          , SUM(r.revenue) AS revenue_all_time
+        FROM {{ source_schema }}.mf_time_spine t
+        INNER JOIN {{ source_schema }}.fct_revenue r ON {{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} <= t.ds
+        GROUP BY
+          t.ds
+          , {{ render_date_trunc("t.ds", TimeGranularity.WEEK) }}
+          , {{ render_date_trunc("t.ds", TimeGranularity.QUARTER) }}
+      ) subq_7
+    ) subq_8
+    GROUP BY
+      metric_time__week
+      , metric_time__quarter
+      , revenue_all_time
+---
+integration_test:
+  name: window_metric_with_non_default_grains
+  description: Query a cumulative window metric with non-default grains
+  model: SIMPLE_MODEL
+  metrics: ["trailing_2_months_revenue"]
+  group_bys: ["metric_time__week", "revenue_instance__ds__month"]
+  check_query: |
+    SELECT
+      revenue_instance__ds__month
+      , metric_time__week
+      , trailing_2_months_revenue
+    FROM (
+      SELECT
+        revenue_instance__ds__month
+        , metric_time__week
+        , AVG(trailing_2_months_revenue) OVER (
+          PARTITION BY revenue_instance__ds__month, metric_time__week
+          ORDER BY metric_time__day
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS trailing_2_months_revenue
+      FROM (
+        SELECT
+          {{ render_date_trunc("t.ds", TimeGranularity.MONTH) }} AS revenue_instance__ds__month
+          , t.ds AS metric_time__day
+          , {{ render_date_trunc("t.ds", TimeGranularity.WEEK) }} AS metric_time__week
+          , SUM(r.revenue) AS trailing_2_months_revenue
+        FROM {{ source_schema }}.mf_time_spine t
+        INNER JOIN {{ source_schema }}.fct_revenue r
+        ON
+          (
+            {{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} <= t.ds
+          ) AND (
+            {{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} > {{ render_date_sub("t", "ds", 2, TimeGranularity.MONTH) }}
+          )
+        GROUP BY
+          {{ render_date_trunc("t.ds", TimeGranularity.MONTH) }}
+          , t.ds
+          , {{ render_date_trunc("t.ds", TimeGranularity.WEEK) }}
+      ) subq_7
+    ) subq_8
+    GROUP BY
+      revenue_instance__ds__month
+      , metric_time__week
+      , trailing_2_months_revenue
+---
+integration_test:
+  name: grain_to_date_metric_with_non_default_grains
+  description: Query a cumulative grain to date metric with non-default grains
+  model: SIMPLE_MODEL
+  metrics: ["revenue_mtd"]
+  group_bys: ["revenue_instance__ds__quarter", "revenue_instance__ds__year"]
+  check_query: |
+    SELECT
+      revenue_instance__ds__quarter
+      , revenue_instance__ds__year
+      , revenue_mtd
+    FROM (
+      SELECT
+        revenue_instance__ds__quarter
+        , revenue_instance__ds__year
+        , FIRST_VALUE(revenue_mtd) OVER (
+          PARTITION BY revenue_instance__ds__quarter, revenue_instance__ds__year
+          ORDER BY metric_time__day
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS revenue_mtd
+      FROM (
+        SELECT
+          {{ render_date_trunc("t.ds", TimeGranularity.QUARTER) }} AS revenue_instance__ds__quarter
+          , {{ render_date_trunc("t.ds", TimeGranularity.YEAR) }} AS revenue_instance__ds__year
+          , t.ds AS metric_time__day
+          , SUM(r.revenue) AS revenue_mtd
+        FROM {{ source_schema }}.mf_time_spine t
+        INNER JOIN {{ source_schema }}.fct_revenue r
+        ON
+          (
+            {{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} <= t.ds
+          ) AND (
+            {{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} >= {{ render_date_trunc("t.ds", TimeGranularity.MONTH) }}
+          )
+        GROUP BY
+          {{ render_date_trunc("t.ds", TimeGranularity.QUARTER) }}
+          , {{ render_date_trunc("t.ds", TimeGranularity.YEAR) }}
+          , t.ds
+      ) subq_7
+    ) subq_8
+    GROUP BY
+      revenue_instance__ds__quarter
+      , revenue_instance__ds__year
+      , revenue_mtd
+---
+integration_test:
+  name: derived_cumulative_metric_with_non_default_grains
+  description: Query a derived cumulative metric with non-default grains
+  model: SIMPLE_MODEL
+  metrics: ["trailing_2_months_revenue_sub_10"]
+  group_bys: ["metric_time__month", "metric_time__year"]
+  check_query: |
+    SELECT
+      metric_time__month
+      , metric_time__year
+      , t2mr - 10 AS trailing_2_months_revenue_sub_10
+    FROM (
+      SELECT
+        metric_time__month
+        , metric_time__year
+        , t2mr
+      FROM (
+        SELECT
+          metric_time__month
+          , metric_time__year
+          , AVG(t2mr) OVER (
+            PARTITION BY metric_time__month, metric_time__year
+            ORDER BY metric_time__day
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS t2mr
+        FROM (
+          SELECT
+            t.ds AS metric_time__day
+            , {{ render_date_trunc("t.ds", TimeGranularity.MONTH) }} AS metric_time__month
+            , {{ render_date_trunc("t.ds", TimeGranularity.YEAR) }} AS metric_time__year
+            , SUM(r.revenue) AS t2mr
+          FROM {{ source_schema }}.mf_time_spine t
+          INNER JOIN {{ source_schema }}.fct_revenue r
+          ON
+            (
+              {{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} <= t.ds
+            ) AND (
+              {{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} > {{ render_date_sub("t", "ds", 2, TimeGranularity.MONTH) }}
+            )
+          GROUP BY
+            t.ds
+            , {{ render_date_trunc("t.ds", TimeGranularity.MONTH) }}
+            , {{ render_date_trunc("t.ds", TimeGranularity.YEAR) }}
+        ) subq_7
+      ) subq_8
+      GROUP BY
+        metric_time__month
+        , metric_time__year
+        , t2mr
+    ) subq_9
+---
+integration_test:
+  name: subdaily_cumulative_window_metric
+  description: test a subdaily cumulative window metric
+  model: SIMPLE_MODEL
+  metrics: ["subdaily_cumulative_window_metric"]
+  group_bys: ["metric_time__hour"]
+  check_query: |
+    SELECT
+      subq_3.ts AS metric_time__hour
+      , SUM(subq_1.archived_users) AS subdaily_cumulative_window_metric
+    FROM {{ source_schema }}.mf_time_spine_hour subq_3
+    INNER JOIN (
+      SELECT
+        {{ render_date_trunc("archived_at", TimeGranularity.HOUR) }} AS metric_time__hour
+        , 1 AS archived_users
+      FROM {{ source_schema }}.dim_users
+    ) subq_1
+    ON (subq_1.metric_time__hour <= subq_3.ts) AND (subq_1.metric_time__hour > {{ render_date_sub("subq_3", "Ts", 3, TimeGranularity.HOUR) }})
+    GROUP BY subq_3.ts
+---
+integration_test:
+  name: subdaily_cumulative_grain_to_date_metric
+  description: test a subdaily cumulative grain_to_date metric
+  model: SIMPLE_MODEL
+  metrics: ["subdaily_cumulative_grain_to_date_metric"]
+  group_bys: ["metric_time__hour"]
+  check_query: |
+    SELECT
+      subq_3.ts AS metric_time__hour
+      , SUM(subq_1.archived_users) AS subdaily_cumulative_grain_to_date_metric
+    FROM {{ source_schema }}.mf_time_spine_hour subq_3
+    INNER JOIN (
+      SELECT
+        {{ render_date_trunc("archived_at", TimeGranularity.HOUR) }} AS metric_time__hour
+        , 1 AS archived_users
+      FROM {{ source_schema }}.dim_users
+    ) subq_1
+    ON (subq_1.metric_time__hour <= subq_3.ts) AND (subq_1.metric_time__hour >= {{ render_date_trunc("subq_3.ts", TimeGranularity.HOUR) }})
+    GROUP BY subq_3.ts

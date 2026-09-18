@@ -1,0 +1,15 @@
+---
+integration_test:
+  name: one_hop_dundered_identifier
+  description: Query a dimension from a different semantic model. Should match a left joined table query.
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__lux_listing"]
+  check_query: |
+    SELECT
+      SUM(1) AS bookings
+      , b.lux_listing_id AS listing__lux_listing
+    FROM {{ source_schema }}.fct_bookings a
+    LEFT OUTER JOIN {{ source_schema }}.dim_lux_listing_id_mapping b
+       ON a.listing_id = b.listing_id
+    GROUP BY b.lux_listing_id

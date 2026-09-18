@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hamilton-flow"
+version = "0.1.0"
+description = "Complete MetricFlow source distribution with Hamilton semantic-query orchestration"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = ["apache-hamilton>=1.90,<2", "duckdb>=1.5,<1.6", "metricflow==0.214.0.dev0"]
+
+[project.scripts]
+hamilton-flow = "hamilton_flow.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hamilton_flow"]
+
+[tool.hatch.envs.default]
+skip-install = true
+python = "3.11"
+dependencies = ["hamilton-flow @ {root:uri}", "metricflow @ {root:uri}/vendor/metricflow", "pytest>=8,<9", "pytest-mock", "pytest-xdist", "hypothesis", "duckdb-engine>=0.13,<0.14", "sqlalchemy>=2,<2.1", "tomli", "varname", "graphviz", "termcolor", "click", "Pympler", "dulwich>=1.2,<2", "PyGithub>=2.9,<3", "ruff"]
+
+[tool.hatch.envs.default.env-vars]
+HAMILTON_TELEMETRY_ENABLED = "false"
+SQLMESH__DISABLE_ANONYMIZED_ANALYTICS = "true"
+SQLMESH_HOME = "{root}/.sqlmesh-user"
+
+[tool.hatch.envs.default.scripts]
+test = "python -m pytest tests -q {args}"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

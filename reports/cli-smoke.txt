@@ -1,0 +1,16 @@
+usage: hamilton-flow [-h] --manifest MANIFEST [--database DATABASE]
+                     [--request REQUEST] [--output OUTPUT]
+                     {query,explain,catalog}
+
+Native MetricFlow semantics with Hamilton execution
+
+positional arguments:
+  {query,explain,catalog}
+
+options:
+  -h, --help            show this help message and exit
+  --manifest MANIFEST
+  --database DATABASE
+  --request REQUEST     JSON arguments for native
+                        MetricFlowQueryRequest.create
+  --output OUTPUT

@@ -1,0 +1,1 @@
+{"metric_names": ["revenue", "orders", "average_order_value"], "group_by_names": ["customer__country"], "order_by_names": ["customer__country"]}

@@ -1,0 +1,108 @@
+test_name: test_distinct_values_plan_with_join
+test_filename: test_dataflow_plan_builder.py
+docstring:
+  Tests a plan to get distinct values of 2 dimensions, where a join is required.
+---
+<DataflowPlan>
+    <WriteToResultDataTableNode>
+        <!-- description = 'Write to DataTable' -->
+        <!-- node_id = NodeId(id_str='wrd_0') -->
+        <OrderByLimitNode>
+            <!-- description = "Order By ['listing__is_lux_latest'] Limit 100" -->
+            <!-- node_id = NodeId(id_str='obl_0') -->
+            <!-- order_by_spec =                                                -->
+            <!--   OrderBySpec(                                                 -->
+            <!--     instance_spec=DimensionSpec(                               -->
+            <!--       element_name='is_lux_latest',                            -->
+            <!--       entity_links=(EntityReference(element_name='listing'),), -->
+            <!--     ),                                                         -->
+            <!--     descending=True,                                           -->
+            <!--   )                                                            -->
+            <!-- limit = '100' -->
+            <SelectorNode>
+                <!-- description = "Select: ['user__home_state_latest', 'listing__is_lux_latest']" -->
+                <!-- node_id = NodeId(id_str='pfe_2') -->
+                <!-- include_spec =                                            -->
+                <!--   DimensionSpec(                                          -->
+                <!--     element_name='home_state_latest',                     -->
+                <!--     entity_links=(EntityReference(element_name='user'),), -->
+                <!--   )                                                       -->
+                <!-- include_spec =                                               -->
+                <!--   DimensionSpec(                                             -->
+                <!--     element_name='is_lux_latest',                            -->
+                <!--     entity_links=(EntityReference(element_name='listing'),), -->
+                <!--   )                                                          -->
+                <!-- distinct = True -->
+                <WhereFilterNode>
+                    <!-- description = 'Filter Output with WHERE' -->
+                    <!-- node_id = NodeId(id_str='wcc_0') -->
+                    <!-- filter_spec =                                                     -->
+                    <!--   WhereFilterSpec(                                                -->
+                    <!--     where_sql="listing__country_latest = 'us'",                   -->
+                    <!--     bind_parameters=SqlBindParameterSet(),                        -->
+                    <!--     element_set=GroupByItemSet(                                   -->
+                    <!--       annotated_specs=(                                           -->
+                    <!--         AnnotatedSpec(                                            -->
+                    <!--           element_type=DIMENSION,                                 -->
+                    <!--           element_name='country_latest',                          -->
+                    <!--           entity_link_names=('listing',),                         -->
+                    <!--           element_properties=(LOCAL,),                            -->
+                    <!--           origin_semantic_model_names=('listings_latest',),       -->
+                    <!--           derived_from_semantic_model_names=('listings_latest',), -->
+                    <!--         ),                                                        -->
+                    <!--       ),                                                          -->
+                    <!--     ),                                                            -->
+                    <!--   )                                                               -->
+                    <SelectorNode>
+                        <!-- description =                                                                                -->
+                        <!--   "Select: ['user__home_state_latest', 'listing__is_lux_latest', 'listing__country_latest']" -->
+                        <!-- node_id = NodeId(id_str='pfe_1') -->
+                        <!-- include_spec =                                            -->
+                        <!--   DimensionSpec(                                          -->
+                        <!--     element_name='home_state_latest',                     -->
+                        <!--     entity_links=(EntityReference(element_name='user'),), -->
+                        <!--   )                                                       -->
+                        <!-- include_spec =                                               -->
+                        <!--   DimensionSpec(                                             -->
+                        <!--     element_name='is_lux_latest',                            -->
+                        <!--     entity_links=(EntityReference(element_name='listing'),), -->
+                        <!--   )                                                          -->
+                        <!-- include_spec =                                               -->
+                        <!--   DimensionSpec(                                             -->
+                        <!--     element_name='country_latest',                           -->
+                        <!--     entity_links=(EntityReference(element_name='listing'),), -->
+                        <!--   )                                                          -->
+                        <!-- distinct = False -->
+                        <JoinOnEntitiesNode>
+                            <!-- description = 'Join Standard Outputs' -->
+                            <!-- node_id = NodeId(id_str='jso_0') -->
+                            <!-- join0_for_node_id_pfe_0 =                                -->
+                            <!--   JoinDescription(                                       -->
+                            <!--     join_node=SelectorNode(node_id=pfe_0),               -->
+                            <!--     join_on_entity=EntityReference(element_name='user'), -->
+                            <!--     join_type=FULL_OUTER,                                -->
+                            <!--   )                                                      -->
+                            <ReadSqlSourceNode>
+                                <!-- description = "Read From SemanticModelDataSet('listings_latest')" -->
+                                <!-- node_id = NodeId(id_str='rss_28024') -->
+                                <!-- data_set = SemanticModelDataSet('listings_latest') -->
+                            </ReadSqlSourceNode>
+                            <SelectorNode>
+                                <!-- description = "Select: ['home_state_latest', 'user']" -->
+                                <!-- node_id = NodeId(id_str='pfe_0') -->
+                                <!-- include_spec = DimensionSpec(element_name='home_state_latest') -->
+                                <!-- include_spec = EntitySpec(element_name='user') -->
+                                <!-- distinct = False -->
+                                <ReadSqlSourceNode>
+                                    <!-- description = "Read From SemanticModelDataSet('users_latest')" -->
+                                    <!-- node_id = NodeId(id_str='rss_28028') -->
+                                    <!-- data_set = SemanticModelDataSet('users_latest') -->
+                                </ReadSqlSourceNode>
+                            </SelectorNode>
+                        </JoinOnEntitiesNode>
+                    </SelectorNode>
+                </WhereFilterNode>
+            </SelectorNode>
+        </OrderByLimitNode>
+    </WriteToResultDataTableNode>
+</DataflowPlan>

@@ -1,0 +1,23 @@
+test_name: test_snapshot[accumulate_last_2_months_metric]
+test_filename: test_resolution_dags.py
+docstring:
+  Checks that the resolution DAGs have been built correctly via checks against a snapshot.
+---
+<GroupByItemResolutionDag>
+    <QueryGroupByItemResolutionNode>
+        <!-- description = 'Output the group-by items for query.' -->
+        <!-- node_id = NodeId(id_str='qr_6') -->
+        <!-- metrics_in_query = ['accumulate_last_2_months_metric'] -->
+        <!-- where_filter = ["{{ TimeDimension('metric_time') }} > '2020-01-01'"] -->
+        <ComplexMetricGroupByItemResolutionNode>
+            <!-- description = 'Output group-by-items available for this metric.' -->
+            <!-- node_id = NodeId(id_str='mtr_2') -->
+            <!-- metric_reference = "MetricReference(element_name='accumulate_last_2_months_metric')" -->
+            <SimpleMetricGroupByItemSourceNode>
+                <!-- description = 'Output group-by-items available for this simple metric.' -->
+                <!-- node_id = NodeId(id_str='msr_9') -->
+                <!-- metric_reference = "MetricReference(element_name='monthly_metric_0')" -->
+            </SimpleMetricGroupByItemSourceNode>
+        </ComplexMetricGroupByItemResolutionNode>
+    </QueryGroupByItemResolutionNode>
+</GroupByItemResolutionDag>

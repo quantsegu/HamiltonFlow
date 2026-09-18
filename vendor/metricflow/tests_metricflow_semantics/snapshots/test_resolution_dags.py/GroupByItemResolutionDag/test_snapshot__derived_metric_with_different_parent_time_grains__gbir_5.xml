@@ -1,0 +1,28 @@
+test_name: test_snapshot[derived_metric_with_different_parent_time_grains]
+test_filename: test_resolution_dags.py
+docstring:
+  Checks that the resolution DAGs have been built correctly via checks against a snapshot.
+---
+<GroupByItemResolutionDag>
+    <QueryGroupByItemResolutionNode>
+        <!-- description = 'Output the group-by items for query.' -->
+        <!-- node_id = NodeId(id_str='qr_5') -->
+        <!-- metrics_in_query = ['derived_metric_with_different_parent_time_grains'] -->
+        <!-- where_filter = ["{{ TimeDimension('metric_time') }} > '2020-01-01'"] -->
+        <ComplexMetricGroupByItemResolutionNode>
+            <!-- description = 'Output group-by-items available for this metric.' -->
+            <!-- node_id = NodeId(id_str='mtr_1') -->
+            <!-- metric_reference = "MetricReference(element_name='derived_metric_with_different_parent_time_grains')" -->
+            <SimpleMetricGroupByItemSourceNode>
+                <!-- description = 'Output group-by-items available for this simple metric.' -->
+                <!-- node_id = NodeId(id_str='msr_7') -->
+                <!-- metric_reference = "MetricReference(element_name='monthly_metric_0')" -->
+            </SimpleMetricGroupByItemSourceNode>
+            <SimpleMetricGroupByItemSourceNode>
+                <!-- description = 'Output group-by-items available for this simple metric.' -->
+                <!-- node_id = NodeId(id_str='msr_8') -->
+                <!-- metric_reference = "MetricReference(element_name='yearly_metric_0')" -->
+            </SimpleMetricGroupByItemSourceNode>
+        </ComplexMetricGroupByItemResolutionNode>
+    </QueryGroupByItemResolutionNode>
+</GroupByItemResolutionDag>

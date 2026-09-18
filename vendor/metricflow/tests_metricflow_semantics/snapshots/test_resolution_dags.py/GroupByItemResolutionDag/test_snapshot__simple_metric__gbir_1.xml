@@ -1,0 +1,18 @@
+test_name: test_snapshot[simple_metric]
+test_filename: test_resolution_dags.py
+docstring:
+  Checks that the resolution DAGs have been built correctly via checks against a snapshot.
+---
+<GroupByItemResolutionDag>
+    <QueryGroupByItemResolutionNode>
+        <!-- description = 'Output the group-by items for query.' -->
+        <!-- node_id = NodeId(id_str='qr_1') -->
+        <!-- metrics_in_query = ['monthly_metric_0'] -->
+        <!-- where_filter = ["{{ TimeDimension('metric_time') }} > '2020-01-01'"] -->
+        <SimpleMetricGroupByItemSourceNode>
+            <!-- description = 'Output group-by-items available for this simple metric.' -->
+            <!-- node_id = NodeId(id_str='msr_0') -->
+            <!-- metric_reference = "MetricReference(element_name='monthly_metric_0')" -->
+        </SimpleMetricGroupByItemSourceNode>
+    </QueryGroupByItemResolutionNode>
+</GroupByItemResolutionDag>

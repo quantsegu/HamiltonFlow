@@ -1,0 +1,75 @@
+test_name: test_cyclic_join
+test_filename: test_cyclic_join.py
+docstring:
+  Tests that sources with the same joinable keys don't cause cycle issues.
+---
+<DataflowPlan>
+    <WriteToResultDataTableNode>
+        <!-- description = 'Write to DataTable' -->
+        <!-- node_id = NodeId(id_str='wrd_0') -->
+        <ComputeMetricsNode>
+            <!-- description = 'Compute Metrics via Expressions' -->
+            <!-- node_id = NodeId(id_str='cm_0') -->
+            <!-- metric_spec = MetricSpec(element_name='listings') -->
+            <AggregateSimpleMetricInputsNode>
+                <!-- description = 'Aggregate Inputs for Simple Metrics' -->
+                <!-- node_id = NodeId(id_str='am_0') -->
+                <!-- null_fill_value_mapping = {'listings': None} -->
+                <SelectorNode>
+                    <!-- description = "Select: ['__listings', 'cyclic_entity__capacity_latest']" -->
+                    <!-- node_id = NodeId(id_str='pfe_2') -->
+                    <!-- include_spec = SimpleMetricInputSpec(element_name='listings') -->
+                    <!-- include_spec =                                                     -->
+                    <!--   DimensionSpec(                                                   -->
+                    <!--     element_name='capacity_latest',                                -->
+                    <!--     entity_links=(EntityReference(element_name='cyclic_entity'),), -->
+                    <!--   )                                                                -->
+                    <!-- distinct = False -->
+                    <SelectorNode>
+                        <!-- description = "Select: ['__listings', 'cyclic_entity__capacity_latest']" -->
+                        <!-- node_id = NodeId(id_str='pfe_1') -->
+                        <!-- include_spec = SimpleMetricInputSpec(element_name='listings') -->
+                        <!-- include_spec =                                                     -->
+                        <!--   DimensionSpec(                                                   -->
+                        <!--     element_name='capacity_latest',                                -->
+                        <!--     entity_links=(EntityReference(element_name='cyclic_entity'),), -->
+                        <!--   )                                                                -->
+                        <!-- distinct = False -->
+                        <JoinOnEntitiesNode>
+                            <!-- description = 'Join Standard Outputs' -->
+                            <!-- node_id = NodeId(id_str='jso_0') -->
+                            <!-- join0_for_node_id_pfe_0 =                                         -->
+                            <!--   JoinDescription(                                                -->
+                            <!--     join_node=SelectorNode(node_id=pfe_0),                        -->
+                            <!--     join_on_entity=EntityReference(element_name='cyclic_entity'), -->
+                            <!--     join_type=LEFT_OUTER,                                         -->
+                            <!--   )                                                               -->
+                            <MetricTimeDimensionTransformNode>
+                                <!-- description = "Metric Time Dimension 'ds'" -->
+                                <!-- node_id = NodeId(id_str='sma_12007') -->
+                                <!-- aggregation_time_dimension = 'ds' -->
+                                <ReadSqlSourceNode>
+                                    <!-- description = "Read From SemanticModelDataSet('listings_latest')" -->
+                                    <!-- node_id = NodeId(id_str='rss_12009') -->
+                                    <!-- data_set = SemanticModelDataSet('listings_latest') -->
+                                </ReadSqlSourceNode>
+                            </MetricTimeDimensionTransformNode>
+                            <SelectorNode>
+                                <!-- description = "Select: ['capacity_latest', 'cyclic_entity']" -->
+                                <!-- node_id = NodeId(id_str='pfe_0') -->
+                                <!-- include_spec = DimensionSpec(element_name='capacity_latest') -->
+                                <!-- include_spec = EntitySpec(element_name='cyclic_entity') -->
+                                <!-- distinct = False -->
+                                <ReadSqlSourceNode>
+                                    <!-- description = "Read From SemanticModelDataSet('listings_latest_cyclic')" -->
+                                    <!-- node_id = NodeId(id_str='rss_12010') -->
+                                    <!-- data_set = SemanticModelDataSet('listings_latest_cyclic') -->
+                                </ReadSqlSourceNode>
+                            </SelectorNode>
+                        </JoinOnEntitiesNode>
+                    </SelectorNode>
+                </SelectorNode>
+            </AggregateSimpleMetricInputsNode>
+        </ComputeMetricsNode>
+    </WriteToResultDataTableNode>
+</DataflowPlan>

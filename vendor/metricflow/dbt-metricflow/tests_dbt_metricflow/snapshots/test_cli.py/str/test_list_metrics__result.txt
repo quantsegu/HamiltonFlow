@@ -1,0 +1,17 @@
+test_name: test_list_metrics
+test_filename: test_cli.py
+---
+The list below shows metrics in the format of "metric_name: list of available dimensions"
+• alterations: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• cancellation_rate: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• cancellations: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• cancellations_mx: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• cumulative_transactions: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• cumulative_transactions_in_last_7_days: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• new_customers: country__region, customer__customer_country, customer__ds, metric_time
+• quick_buy_amount_usd: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• quick_buy_transactions: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• revenue_usd: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• transaction_amount: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• transaction_usd_na: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more
+• transactions: customer__country__region, customer__customer_country, customer__ds, metric_time, transaction__ds and 2 more

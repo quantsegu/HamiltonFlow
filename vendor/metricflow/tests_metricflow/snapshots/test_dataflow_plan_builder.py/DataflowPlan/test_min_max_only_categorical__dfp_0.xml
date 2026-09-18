@@ -1,0 +1,40 @@
+test_name: test_min_max_only_categorical
+test_filename: test_dataflow_plan_builder.py
+docstring:
+  Tests a plan to get the min & max distinct values of a categorical dimension.
+---
+<DataflowPlan>
+    <WriteToResultDataTableNode>
+        <!-- description = 'Write to DataTable' -->
+        <!-- node_id = NodeId(id_str='wrd_0') -->
+        <MinMaxNode>
+            <!-- description = 'Calculate min and max' -->
+            <!-- node_id = NodeId(id_str='mm_0') -->
+            <SelectorNode>
+                <!-- description = "Select: ['listing__country_latest']" -->
+                <!-- node_id = NodeId(id_str='pfe_1') -->
+                <!-- include_spec =                                               -->
+                <!--   DimensionSpec(                                             -->
+                <!--     element_name='country_latest',                           -->
+                <!--     entity_links=(EntityReference(element_name='listing'),), -->
+                <!--   )                                                          -->
+                <!-- distinct = True -->
+                <SelectorNode>
+                    <!-- description = "Select: ['listing__country_latest']" -->
+                    <!-- node_id = NodeId(id_str='pfe_0') -->
+                    <!-- include_spec =                                               -->
+                    <!--   DimensionSpec(                                             -->
+                    <!--     element_name='country_latest',                           -->
+                    <!--     entity_links=(EntityReference(element_name='listing'),), -->
+                    <!--   )                                                          -->
+                    <!-- distinct = False -->
+                    <ReadSqlSourceNode>
+                        <!-- description = "Read From SemanticModelDataSet('listings_latest')" -->
+                        <!-- node_id = NodeId(id_str='rss_28024') -->
+                        <!-- data_set = SemanticModelDataSet('listings_latest') -->
+                    </ReadSqlSourceNode>
+                </SelectorNode>
+            </SelectorNode>
+        </MinMaxNode>
+    </WriteToResultDataTableNode>
+</DataflowPlan>

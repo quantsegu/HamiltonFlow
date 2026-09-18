@@ -1,0 +1,22 @@
+test_name: test_unavailable_group_by_item_in_derived_metric_parent
+test_filename: test_matching_item_for_querying.py
+docstring:
+  Tests a group-by-item that's only available in one of the parent metrics of a derived metric.
+---
+GroupByItemResolution(
+  linkable_element_set=GroupByItemSet(),
+  issue_set=MetricFlowQueryResolutionIssueSet(
+    issues=(
+      NoMatchingItemsForSimpleMetric(
+        issue_type=ERROR,
+        query_resolution_path=MetricFlowQueryResolutionPath(
+          resolution_path_nodes=(
+            QueryGroupByItemResolutionNode(node_id=qr_5),
+            ComplexMetricGroupByItemResolutionNode(node_id=mtr_1),
+            SimpleMetricGroupByItemSourceNode(node_id=msr_8),
+          ),
+        ),
+      ),
+    ),
+  ),
+)

@@ -1,0 +1,7 @@
+test_name: test_list_entities
+test_filename: test_cli.py
+---
+• country
+• customer
+• id_order
+• transaction

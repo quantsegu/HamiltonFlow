@@ -1,0 +1,90 @@
+test_name: test_joined_plan
+test_filename: test_dataflow_plan_builder.py
+docstring:
+  Tests a plan getting a simple-metric input and a joined dimension.
+---
+<DataflowPlan>
+    <WriteToResultDataTableNode>
+        <!-- description = 'Write to DataTable' -->
+        <!-- node_id = NodeId(id_str='wrd_0') -->
+        <ComputeMetricsNode>
+            <!-- description = 'Compute Metrics via Expressions' -->
+            <!-- node_id = NodeId(id_str='cm_0') -->
+            <!-- metric_spec = MetricSpec(element_name='bookings') -->
+            <AggregateSimpleMetricInputsNode>
+                <!-- description = 'Aggregate Inputs for Simple Metrics' -->
+                <!-- node_id = NodeId(id_str='am_0') -->
+                <!-- null_fill_value_mapping = {'bookings': None} -->
+                <SelectorNode>
+                    <!-- description = "Select: ['__bookings', 'booking__is_instant', 'listing__country_latest']" -->
+                    <!-- node_id = NodeId(id_str='pfe_2') -->
+                    <!-- include_spec = SimpleMetricInputSpec(element_name='bookings') -->
+                    <!-- include_spec =                                               -->
+                    <!--   DimensionSpec(                                             -->
+                    <!--     element_name='is_instant',                               -->
+                    <!--     entity_links=(EntityReference(element_name='booking'),), -->
+                    <!--   )                                                          -->
+                    <!-- include_spec =                                               -->
+                    <!--   DimensionSpec(                                             -->
+                    <!--     element_name='country_latest',                           -->
+                    <!--     entity_links=(EntityReference(element_name='listing'),), -->
+                    <!--   )                                                          -->
+                    <!-- distinct = False -->
+                    <SelectorNode>
+                        <!-- description = "Select: ['__bookings', 'booking__is_instant', 'listing__country_latest']" -->
+                        <!-- node_id = NodeId(id_str='pfe_1') -->
+                        <!-- include_spec = SimpleMetricInputSpec(element_name='bookings') -->
+                        <!-- include_spec =                                               -->
+                        <!--   DimensionSpec(                                             -->
+                        <!--     element_name='is_instant',                               -->
+                        <!--     entity_links=(EntityReference(element_name='booking'),), -->
+                        <!--   )                                                          -->
+                        <!-- include_spec =                                               -->
+                        <!--   DimensionSpec(                                             -->
+                        <!--     element_name='country_latest',                           -->
+                        <!--     entity_links=(EntityReference(element_name='listing'),), -->
+                        <!--   )                                                          -->
+                        <!-- distinct = False -->
+                        <JoinOnEntitiesNode>
+                            <!-- description = 'Join Standard Outputs' -->
+                            <!-- node_id = NodeId(id_str='jso_0') -->
+                            <!-- join0_for_node_id_pfe_0 =                                   -->
+                            <!--   JoinDescription(                                          -->
+                            <!--     join_node=SelectorNode(node_id=pfe_0),                  -->
+                            <!--     join_on_entity=EntityReference(element_name='listing'), -->
+                            <!--     join_type=LEFT_OUTER,                                   -->
+                            <!--   )                                                         -->
+                            <MetricTimeDimensionTransformNode>
+                                <!-- description = "Metric Time Dimension 'ds'" -->
+                                <!-- node_id = NodeId(id_str='sma_28009') -->
+                                <!-- aggregation_time_dimension = 'ds' -->
+                                <ReadSqlSourceNode>
+                                    <!-- description = "Read From SemanticModelDataSet('bookings_source')" -->
+                                    <!-- node_id = NodeId(id_str='rss_28020') -->
+                                    <!-- data_set = SemanticModelDataSet('bookings_source') -->
+                                </ReadSqlSourceNode>
+                            </MetricTimeDimensionTransformNode>
+                            <SelectorNode>
+                                <!-- description = "Select: ['country_latest', 'listing']" -->
+                                <!-- node_id = NodeId(id_str='pfe_0') -->
+                                <!-- include_spec = DimensionSpec(element_name='country_latest') -->
+                                <!-- include_spec = EntitySpec(element_name='listing') -->
+                                <!-- distinct = False -->
+                                <MetricTimeDimensionTransformNode>
+                                    <!-- description = "Metric Time Dimension 'ds'" -->
+                                    <!-- node_id = NodeId(id_str='sma_28014') -->
+                                    <!-- aggregation_time_dimension = 'ds' -->
+                                    <ReadSqlSourceNode>
+                                        <!-- description = "Read From SemanticModelDataSet('listings_latest')" -->
+                                        <!-- node_id = NodeId(id_str='rss_28024') -->
+                                        <!-- data_set = SemanticModelDataSet('listings_latest') -->
+                                    </ReadSqlSourceNode>
+                                </MetricTimeDimensionTransformNode>
+                            </SelectorNode>
+                        </JoinOnEntitiesNode>
+                    </SelectorNode>
+                </SelectorNode>
+            </AggregateSimpleMetricInputsNode>
+        </ComputeMetricsNode>
+    </WriteToResultDataTableNode>
+</DataflowPlan>

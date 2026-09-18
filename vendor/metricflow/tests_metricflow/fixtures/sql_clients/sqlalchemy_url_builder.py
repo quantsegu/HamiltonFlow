@@ -1,0 +1,304 @@
+from __future__ import annotations
+
+import json
+from typing import Optional
+
+from sqlalchemy import URL as SqlAlchemyURL
+
+from tests_metricflow.fixtures.connection_url import SqlEngineConnectionParameterSet
+from tests_metricflow.fixtures.sql_clients.common_client import SqlDialect
+
+
+class SqlAlchemyUrlBuilder:
+    """Converts MetricFlow URL format to SqlAlchemy URL objects."""
+
+    @staticmethod
+    def build_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+        schema: Optional[str] = None,
+    ) -> SqlAlchemyURL:
+        """Build a SqlAlchemy URL from MetricFlow connection parameters.
+
+        Args:
+            connection_params: Parsed MetricFlow connection parameters
+            password: Database password (from separate env var)
+            schema: Default schema to use. Ignored for Redshift as Redshift does not support setting schemas at
+              connection time. Instead, all queries have to use schema-qualified relation names.
+
+        Returns:
+            SqlAlchemy URL object
+        """
+        dialect = SqlDialect(connection_params.dialect)
+
+        if dialect is SqlDialect.DUCKDB:
+            return SqlAlchemyUrlBuilder._build_duckdb_url(connection_params)
+        elif dialect is SqlDialect.DATABRICKS:
+            return SqlAlchemyUrlBuilder._build_databricks_url(connection_params, password, schema)
+        elif dialect is SqlDialect.POSTGRESQL:
+            return SqlAlchemyUrlBuilder._build_postgresql_url(connection_params, password, schema)
+        elif dialect is SqlDialect.SNOWFLAKE:
+            return SqlAlchemyUrlBuilder._build_snowflake_url(connection_params, password, schema)
+        elif dialect is SqlDialect.REDSHIFT:
+            return SqlAlchemyUrlBuilder._build_redshift_url(connection_params, password)
+        elif dialect is SqlDialect.BIGQUERY:
+            assert (
+                connection_params.url_str == "bigquery://"
+            ), "All BigQuery URL properties should be in the credentials JSON string."
+            return SqlAlchemyUrlBuilder._build_bigquery_url(password, schema)
+        elif dialect is SqlDialect.ATHENA:
+            return SqlAlchemyUrlBuilder._build_athena_url(connection_params, password, schema)
+        elif dialect is SqlDialect.TRINO:
+            return SqlAlchemyUrlBuilder._build_trino_url(connection_params, password, schema)
+        elif dialect is SqlDialect.VERTICA:
+            return SqlAlchemyUrlBuilder._build_vertica_url(connection_params, password)
+        else:
+            raise ValueError(f"Unsupported dialect: {dialect}")
+
+    @staticmethod
+    def _build_duckdb_url(
+        connection_params: SqlEngineConnectionParameterSet,
+    ) -> SqlAlchemyURL:
+        """Build DuckDB URL.
+
+        DuckDB URLs can be:
+        - duckdb:// (in-memory)
+        - duckdb:///path/to/file.db (file-based)
+
+        Using duckdb_engine package: https://github.com/Mause/duckdb_engine
+        """
+        database = connection_params.database or ""
+
+        # duckdb_engine uses 'duckdb' as the dialect name
+        return SqlAlchemyURL.create(
+            drivername="duckdb",
+            database=database if database else None,
+        )
+
+    @staticmethod
+    def _build_databricks_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+        schema: Optional[str] = None,
+    ) -> SqlAlchemyURL:
+        """Build Databricks URL.
+
+        Databricks SqlAlchemy: https://docs.databricks.com/aws/en/dev-tools/sqlalchemy
+
+        Format: databricks://token:{token}@{hostname}:{port}/{database}
+
+        The http_path is passed as a query parameter.
+        """
+        # Databricks uses token authentication
+        # The password field contains the token
+
+        query_params = {}
+        if connection_params.http_path:
+            query_params["http_path"] = connection_params.http_path
+
+        # Add catalog if specified in query fields
+        catalog_values = connection_params.get_query_field_values("catalog")
+        if catalog_values:
+            query_params["catalog"] = catalog_values[0]
+
+        if schema:
+            query_params["schema"] = schema
+
+        return SqlAlchemyURL.create(
+            drivername="databricks",
+            username="token",
+            password=password,  # This is the access token
+            host=connection_params.hostname,
+            port=connection_params.port,
+            database=connection_params.database,
+            query=query_params,
+        )
+
+    @staticmethod
+    def _build_postgresql_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+        schema: Optional[str] = None,
+    ) -> SqlAlchemyURL:
+        """Build PostgreSQL URL."""
+        query_params = {}
+        if schema:
+            query_params["options"] = f"-c search_path={schema}"
+
+        # Preserve any additional query parameters from original URL
+        for field in connection_params.query_fields:
+            if field.field_name not in query_params:
+                query_params[field.field_name] = field.values[0]
+
+        return SqlAlchemyURL.create(
+            drivername="postgresql+psycopg2",
+            username=connection_params.username,
+            password=password,
+            host=connection_params.hostname,
+            port=connection_params.port,
+            database=connection_params.database,
+            query=query_params,
+        )
+
+    @staticmethod
+    def _build_snowflake_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+        schema: Optional[str] = None,
+    ) -> SqlAlchemyURL:
+        """Build Snowflake URL."""
+        query_params = {}
+
+        # Snowflake requires warehouse parameter
+        warehouse_values = connection_params.get_query_field_values("warehouse")
+        if warehouse_values:
+            query_params["warehouse"] = warehouse_values[0]
+
+        if schema:
+            query_params["schema"] = schema
+
+        # Preserve other query parameters
+        for field in connection_params.query_fields:
+            if field.field_name not in query_params:
+                query_params[field.field_name] = field.values[0]
+
+        return SqlAlchemyURL.create(
+            drivername="snowflake",
+            username=connection_params.username,
+            password=password,
+            host=connection_params.hostname,
+            port=connection_params.port,
+            database=connection_params.database,
+            query=query_params,
+        )
+
+    @staticmethod
+    def _build_redshift_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+    ) -> SqlAlchemyURL:
+        """Build Redshift URL."""
+        return SqlAlchemyURL.create(
+            drivername="mf_redshift_psycopg2",
+            username=connection_params.username,
+            password=password,
+            host=connection_params.hostname,
+            port=connection_params.port or 5439,
+            database=connection_params.database,
+        )
+
+    @staticmethod
+    def _build_bigquery_url(
+        password: str,  # JSON credentials string
+        schema: Optional[str] = None,
+    ) -> SqlAlchemyURL:
+        """Build BigQuery URL.
+
+        BigQuery uses service account credentials passed as JSON string.
+        The password parameter contains the full credentials JSON.
+        """
+        # Parse credentials to get project_id
+        credentials = json.loads(password)
+        project_id = credentials.get("project_id")
+
+        # BigQuery URL format: bigquery://project_id/dataset_id
+        # This means the dataset_id, which is the schema value passed in here,
+        # maps to the database value in a standard SqlAlchemy URL.
+        database_value = schema if schema else None
+        return SqlAlchemyURL.create(
+            drivername="bigquery",
+            host=project_id,
+            database=database_value,
+        )
+
+    @staticmethod
+    def _build_vertica_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+    ) -> SqlAlchemyURL:
+        """Build Vertica URL.
+
+        Uses the custom MetricFlow Vertica dialect wrapping the vertica-python driver, since there is no
+        Vertica dialect for SqlAlchemy 2.x.
+
+        Like Redshift, Vertica does not support setting a default schema at connection time, so all queries
+        have to use schema-qualified relation names.
+        """
+        return SqlAlchemyURL.create(
+            drivername="mf_vertica_python",
+            username=connection_params.username,
+            password=password,
+            host=connection_params.hostname,
+            port=connection_params.port or 5433,
+            database=connection_params.database,
+        )
+
+    @staticmethod
+    def _build_trino_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+        schema: Optional[str] = None,
+    ) -> SqlAlchemyURL:
+        """Build Trino URL.
+
+        Note - Trino has a "catalog" property in its URL that requires custom handling.
+        However, it is currently encoded in their URL format in the same path location as the
+        standard database value, so we simply use that the same way we would with a database that
+        conforms to the standard SqlAlchemy URL format.
+        """
+        query_params = {}
+
+        if schema:
+            query_params["schema"] = schema
+
+        return SqlAlchemyURL.create(
+            drivername="trino",
+            username=connection_params.username,
+            password=password,
+            host=connection_params.hostname,
+            port=connection_params.port or 8080,
+            database=connection_params.database,
+            query=query_params,
+        )
+
+    @staticmethod
+    def _build_athena_url(
+        connection_params: SqlEngineConnectionParameterSet,
+        password: str,
+        schema: Optional[str] = None,
+    ) -> SqlAlchemyURL:
+        """Build Athena URL."""
+        region_name_values = connection_params.get_query_field_values("region_name")
+        if len(region_name_values) != 1:
+            raise ValueError(f"SQL engine URL did not specify exactly 1 Athena region_name! Got {region_name_values}")
+
+        s3_staging_dir_values = connection_params.get_query_field_values("s3_staging_dir")
+        if len(s3_staging_dir_values) != 1:
+            raise ValueError(
+                f"SQL engine URL did not specify exactly 1 Athena s3_staging_dir! Got {s3_staging_dir_values}"
+            )
+
+        query_params = {
+            "region_name": region_name_values[0],
+            "s3_staging_dir": s3_staging_dir_values[0],
+        }
+        if connection_params.database:
+            query_params["catalog_name"] = connection_params.database
+
+        aws_profile_name_values = connection_params.get_query_field_values("aws_profile_name")
+        if len(aws_profile_name_values) > 1:
+            raise ValueError(
+                f"SQL engine URL specified multiple Athena aws_profile_name values: {aws_profile_name_values}"
+            )
+        if aws_profile_name_values:
+            query_params["profile_name"] = aws_profile_name_values[0]
+
+        return SqlAlchemyURL.create(
+            drivername="awsathena+rest",
+            username=connection_params.username,
+            password=password or None,
+            host=f"athena.{region_name_values[0]}.amazonaws.com",
+            port=connection_params.port or 443,
+            database=schema,
+            query=query_params,
+        )

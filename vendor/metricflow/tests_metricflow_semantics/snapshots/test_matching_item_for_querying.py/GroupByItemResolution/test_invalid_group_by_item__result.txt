@@ -1,0 +1,28 @@
+test_name: test_invalid_group_by_item
+test_filename: test_matching_item_for_querying.py
+---
+GroupByItemResolution(
+  linkable_element_set=GroupByItemSet(),
+  issue_set=MetricFlowQueryResolutionIssueSet(
+    issues=(
+      NoMatchingItemsForSimpleMetric(
+        issue_type=ERROR,
+        query_resolution_path=MetricFlowQueryResolutionPath(
+          resolution_path_nodes=(
+            QueryGroupByItemResolutionNode(node_id=qr_3),
+            SimpleMetricGroupByItemSourceNode(node_id=msr_3),
+          ),
+        ),
+      ),
+      NoMatchingItemsForSimpleMetric(
+        issue_type=ERROR,
+        query_resolution_path=MetricFlowQueryResolutionPath(
+          resolution_path_nodes=(
+            QueryGroupByItemResolutionNode(node_id=qr_3),
+            SimpleMetricGroupByItemSourceNode(node_id=msr_4),
+          ),
+        ),
+      ),
+    ),
+  ),
+)

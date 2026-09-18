@@ -1,0 +1,1093 @@
+---
+integration_test:
+  name: query_granularity_for_sum_day
+  description: Query a sum metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time__day"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS metric_time__day
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      ds
+---
+integration_test:
+  name: query_granularity_for_sum_week
+  description: Query a sum metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time__week"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.WEEK) }} AS metric_time__week
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.WEEK) }}
+---
+integration_test:
+  name: query_granularity_for_sum_month
+  description: Query a sum metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time__month"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.MONTH) }} AS metric_time__month
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.MONTH) }}
+---
+integration_test:
+  name: query_granularity_for_sum_quarter
+  description: Query a sum metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time__quarter"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.QUARTER) }} AS metric_time__quarter
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.QUARTER) }}
+---
+integration_test:
+  name: query_granularity_for_sum_year
+  description: Query a sum metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time__year"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.YEAR) }} AS metric_time__year
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.YEAR) }}
+---
+integration_test:
+  name: query_granularity_for_count_distinct_day
+  description: Query a count distinct metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["unique_listings_booked"]
+  group_bys: ["metric_time__day"]
+  check_query: |
+    SELECT
+      COUNT(DISTINCT listing_id) AS unique_listings_booked
+      , {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS metric_time__day
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      ds
+---
+integration_test:
+  name: query_granularity_for_count_distinct_week
+  description: Query a count distinct metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["unique_listings_booked"]
+  group_bys: ["metric_time__week"]
+  check_query: |
+    SELECT
+      COUNT(DISTINCT listing_id) AS unique_listings_booked
+      , {{ render_date_trunc("ds", TimeGranularity.WEEK) }} AS metric_time__week
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.WEEK) }}
+---
+integration_test:
+  name: query_granularity_for_count_distinct_month
+  description: Query a count distinct metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["unique_listings_booked"]
+  group_bys: ["metric_time__month"]
+  check_query: |
+    SELECT
+      COUNT(DISTINCT listing_id) AS unique_listings_booked
+      , {{ render_date_trunc("ds", TimeGranularity.MONTH) }} AS metric_time__month
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.MONTH) }}
+---
+integration_test:
+  name: query_granularity_for_count_distinct_quarter
+  description: Query a count distinct metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["unique_listings_booked"]
+  group_bys: ["metric_time__quarter"]
+  check_query: |
+    SELECT
+      COUNT(DISTINCT listing_id) AS unique_listings_booked
+      , {{ render_date_trunc("ds", TimeGranularity.QUARTER) }} AS metric_time__quarter
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.QUARTER) }}
+---
+integration_test:
+  name: query_granularity_for_count_distinct_year
+  description: Query a count distinct metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["unique_listings_booked"]
+  group_bys: ["metric_time__year"]
+  check_query: |
+    SELECT
+      COUNT(DISTINCT listing_id) AS unique_listings_booked
+      , {{ render_date_trunc("ds", TimeGranularity.YEAR) }} AS metric_time__year
+    FROM {{ source_schema }}.fct_bookings_extended
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.YEAR) }}
+---
+integration_test:
+  name: query_granularity_for_joined_dundered_dimension_day
+  description: Query a count distinct metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__ds__day"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS listing__ds__day
+    FROM {{ source_schema }}.fct_bookings_extended b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_extended l
+    ON b.listing_id = l.listing_id
+    GROUP BY
+      2
+---
+integration_test:
+  name: query_granularity_for_joined_dundered_dimension_month
+  description: Query a count distinct metric by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__ds__month"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("l.listing_creation_ds", TimeGranularity.MONTH) }} AS listing__ds__month
+    FROM {{ source_schema }}.fct_bookings_extended b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_extended l
+    ON b.listing_id = l.listing_id
+    GROUP BY
+      2
+---
+integration_test:
+  name: metric_with_non_day_granularity_expected_boundary
+  description: Query a metric at a time granularity on expected date boundaries
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings_monthly"]
+  group_bys: ["metric_time"]
+  time_constraint: ["2020-01-01", "2020-02-29"]
+  check_query: |
+    SELECT
+      SUM(bookings_monthly) AS bookings_monthly
+      , ds AS metric_time__month
+    FROM {{ source_schema }}.fct_bookings_extended_monthly
+    WHERE {{ render_time_constraint("ds", "2020-01-01", "2020-02-29") }}
+    GROUP BY
+      ds
+---
+integration_test:
+  name: metric_with_non_day_granularity_on_non_boundaries
+  description: Query a metric at a time granularity on non  date boundaries
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings_monthly"]
+  group_bys: ["metric_time"]
+  time_constraint: ["2020-01-15", "2020-02-15"]
+  check_query: |
+    SELECT
+      SUM(bookings_monthly) AS bookings_monthly
+      , ds AS metric_time__month
+    FROM {{ source_schema }}.fct_bookings_extended_monthly
+    WHERE {{ render_time_constraint("ds", "2020-01-01", "2020-02-29") }}
+    GROUP BY
+      ds
+---
+integration_test:
+  name: weekly_metric_on_non_boundaries
+  description: Query a metric from a sql query by time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time__week"]
+  time_constraint: ["2020-01-15", "2020-01-22"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.WEEK) }} AS metric_time__week
+    FROM {{ source_schema }}.fct_bookings_extended
+    WHERE {{ render_time_constraint("ds", "2020-01-13", "2020-01-26") }}
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.WEEK) }}
+---
+integration_test:
+  name: daily_metric_with_monthly_time_dimension
+  description: Query a metric with a month-granularity time dimensions. Filter should expand to requested granularity.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time__month"]
+  time_constraint: ["2020-01-01", "2020-01-02"]
+  check_query: |
+    SELECT
+      SUM(booking) AS bookings
+      , {{ render_date_trunc("ds", TimeGranularity.MONTH) }} AS metric_time__month
+    FROM {{ source_schema }}.fct_bookings_extended
+    WHERE {{ render_time_constraint("ds", "2020-01-01", "2020-01-31") }}
+    GROUP BY
+      {{ render_date_trunc("ds", TimeGranularity.MONTH) }}
+---
+integration_test:
+  name: metrics_with_different_time_granularities
+  description: Query two metrics with different time granularities.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings_monthly", "bookings"]
+  group_bys: ["metric_time"]
+  time_constraint: ["2020-01-01", "2020-02-29"]
+  check_query: |
+    SELECT
+      SUM(bookings_monthly) as bookings_monthly
+      , SUM(bookings) as bookings
+      , ds AS metric_time__month
+    FROM (
+      SELECT
+        a.bookings_monthly
+        , b.bookings
+        , COALESCE(a.ds, b.ds) AS ds
+      FROM (
+        SELECT
+          SUM(bookings_monthly) AS bookings_monthly
+          , ds
+        FROM {{ source_schema }}.fct_bookings_extended_monthly
+        WHERE
+          {{ render_time_constraint("ds", "2020-01-01", "2020-02-29") }}
+        GROUP BY ds
+      ) a
+      FULL OUTER JOIN (
+        SELECT
+          SUM(booking) AS bookings
+          , {{ render_date_trunc("ds", TimeGranularity.MONTH) }} AS ds
+        FROM {{ source_schema }}.fct_bookings_extended
+        WHERE
+          {{ render_time_constraint("ds", "2020-01-01", "2020-02-29") }}
+        GROUP BY {{ render_date_trunc("ds", TimeGranularity.MONTH) }}
+      ) b
+      ON a.ds = b.ds
+      ) c
+    GROUP BY
+      ds
+---
+integration_test:
+  name: metrics_with_different_time_granularities_and_no_metric_time
+  description: Query two metrics with different time granularities with a common dimension, but no metric time.
+  model: EXTENDED_DATE_MODEL
+  metrics: ["bookings_monthly", "bookings"]
+  group_bys: ["listing__ds"]
+  time_constraint: ["2020-01-15", "2020-02-15"]
+  check_query: |
+    SELECT
+      a.bookings_monthly AS bookings_monthly
+      , b.bookings AS bookings
+      , COALESCE(a.listing__ds__day, b.listing__ds__day) AS listing__ds__day
+    FROM (
+      SELECT
+        SUM(bookings_monthly) AS bookings_monthly
+        , l.listing_creation_ds AS listing__ds__day
+      FROM {{ source_schema }}.fct_bookings_extended_monthly b
+      LEFT OUTER JOIN {{ source_schema }}.dim_listings_extended l
+      ON b.listing_id = l.listing_id
+      WHERE
+        {{ render_time_constraint("ds", "2020-01-01", "2020-02-29") }}
+      GROUP BY 2
+    ) a
+    FULL OUTER JOIN (
+      SELECT
+        SUM(booking) AS bookings
+        , l.listing_creation_ds AS listing__ds__day
+      FROM {{ source_schema }}.fct_bookings_extended b
+      LEFT OUTER JOIN {{ source_schema }}.dim_listings_extended l
+      ON b.listing_id = l.listing_id
+      WHERE
+        {{ render_time_constraint("ds", "2020-01-01", "2020-02-29") }}
+      GROUP BY 2
+    ) b
+    ON a.listing__ds__day = b.listing__ds__day
+---
+integration_test:
+  name: simple_metric_with_custom_granularity
+  description: A simple metric queried with a custom granularity
+  model: SIMPLE_MODEL
+  metrics: [ "bookings"]
+  group_bys: ["booking__ds__alien_day"]
+  check_query: |
+    SELECT
+      b.alien_day AS booking__ds__alien_day
+      , SUM(1) AS bookings
+    FROM {{ source_schema }}.fct_bookings a
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine b
+    ON {{ render_date_trunc("a.ds", TimeGranularity.DAY) }} = b.ds
+    GROUP BY b.alien_day
+---
+integration_test:
+  name: simple_metric_with_custom_granularity_and_join
+  description: A simple metric queried with a custom granularity
+  model: SIMPLE_MODEL
+  metrics: [ "bookings"]
+  group_bys: ["listing__ds__alien_day"]
+  check_query: |
+    SELECT
+      c.alien_day AS listing__ds__alien_day
+      , SUM(1) AS bookings
+    FROM {{ source_schema }}.fct_bookings a
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l
+      ON a.listing_id = l.listing_id
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine c
+      ON {{ render_date_trunc("l.created_at", TimeGranularity.DAY) }} = c.ds
+    GROUP BY c.alien_day
+---
+integration_test:
+  name: cumulative_metric_with_custom_granularity
+  description: A cumulative metric queried with a custom granularity
+  model: SIMPLE_MODEL
+  metrics: [ "trailing_2_months_revenue"]
+  group_bys: ["metric_time__alien_day"]
+  check_query: |
+    SELECT
+      metric_time__alien_day
+      , trailing_2_months_revenue
+    FROM (
+      SELECT
+        metric_time__alien_day
+        , AVG(txn_revenue) OVER (PARTITION BY metric_time__alien_day) AS trailing_2_months_revenue
+      FROM (
+        SELECT
+          ts2.alien_day AS metric_time__alien_day
+          , ts.ds AS metric_time__day
+          , SUM(r.revenue) AS txn_revenue
+        FROM {{ source_schema }}.mf_time_spine ts
+        INNER JOIN {{ source_schema }}.fct_revenue r
+          ON ({{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} <= ts.ds)
+          AND ({{ render_date_trunc("r.created_at", TimeGranularity.DAY) }} > {{ render_date_sub("ts", "ds", 2, TimeGranularity.MONTH) }})
+        LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts2
+          ON ts.ds = ts2.ds
+        GROUP BY ts2.alien_day, ts.ds
+      ) ts
+    ) subq_9
+    GROUP BY metric_time__alien_day, trailing_2_months_revenue
+---
+integration_test:
+  name: derived_offset_metric_with_custom_granularity
+  description: A derived metric queried with a custom granularity
+  model: SIMPLE_MODEL
+  metrics: [ "booking_fees_last_week_per_booker_this_week"]
+  group_bys: ["metric_time__alien_day"]
+  check_query: |
+    SELECT
+      metric_time__alien_day
+      , booking_value * 0.05 / bookers AS booking_fees_last_week_per_booker_this_week
+    FROM (
+      SELECT
+        COALESCE(subq_8.metric_time__alien_day, subq_14.metric_time__alien_day) AS metric_time__alien_day
+        , MAX(subq_8.booking_value) AS booking_value
+        , MAX(subq_14.bookers) AS bookers
+      FROM (
+        SELECT
+          ts2.alien_day AS metric_time__alien_day
+          , SUM(b.booking_value) AS booking_value
+        FROM {{ source_schema }}.mf_time_spine ts
+        INNER JOIN {{ source_schema }}.fct_bookings b
+          ON {{ render_date_sub("ts", "ds", 1, TimeGranularity.WEEK) }} = {{ render_date_trunc("b.ds", TimeGranularity.DAY) }}
+        LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts2 ON ts.ds = ts2.ds
+        GROUP BY ts2.alien_day
+      ) subq_8
+      FULL OUTER JOIN (
+        SELECT
+          ts3.alien_day AS metric_time__alien_day
+          , COUNT(DISTINCT b.guest_id) AS bookers
+        FROM {{ source_schema }}.fct_bookings b
+        LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts3
+          ON {{ render_date_trunc("b.ds", TimeGranularity.DAY) }} = ts3.ds
+        GROUP BY ts3.alien_day
+      ) subq_14
+      ON subq_8.metric_time__alien_day = subq_14.metric_time__alien_day
+      GROUP BY COALESCE(subq_8.metric_time__alien_day, subq_14.metric_time__alien_day)
+    ) subq_15
+---
+integration_test:
+  name: multiple_metrics_with_custom_granularity
+  description: A derived metric queried with a custom granularity
+  model: SIMPLE_MODEL
+  metrics: [ "bookings", "listings"]
+  group_bys: ["metric_time__alien_day", "listing__ds__month"]
+  check_query: |
+    SELECT
+      COALESCE(subq_10.metric_time__alien_day, subq_16.metric_time__alien_day) AS metric_time__alien_day
+      , COALESCE(subq_10.listing__ds__month, subq_16.listing__ds__month) AS listing__ds__month
+      , MAX(subq_10.bookings) AS bookings
+      , MAX(subq_16.listings) AS listings
+    FROM (
+      SELECT
+        ts.alien_day AS metric_time__alien_day
+        , {{ render_date_trunc("l.created_at", TimeGranularity.MONTH) }} AS listing__ds__month
+        , SUM(1) AS bookings
+      FROM {{ source_schema }}.fct_bookings b
+      LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+      LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts
+        ON {{ render_date_trunc("b.ds", TimeGranularity.DAY) }} = ts.ds
+      GROUP BY ts.alien_day, {{ render_date_trunc("l.created_at", TimeGranularity.MONTH) }}
+    ) subq_10
+    FULL OUTER JOIN (
+      SELECT
+        ts.alien_day AS metric_time__alien_day
+        , {{ render_date_trunc("l.created_at", TimeGranularity.MONTH) }} AS listing__ds__month
+        , SUM(1) AS listings
+      FROM {{ source_schema }}.dim_listings_latest l
+      LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts
+        ON {{ render_date_trunc("l.created_at", TimeGranularity.DAY) }} = ts.ds
+      GROUP BY ts.alien_day, {{ render_date_trunc("l.created_at", TimeGranularity.MONTH) }}
+    ) subq_16
+    ON (subq_10.metric_time__alien_day = subq_16.metric_time__alien_day)
+      AND (subq_10.listing__ds__month = subq_16.listing__ds__month)
+    GROUP BY
+      COALESCE(subq_10.metric_time__alien_day, subq_16.metric_time__alien_day)
+      , COALESCE(subq_10.listing__ds__month, subq_16.listing__ds__month)
+---
+integration_test:
+  name: simple_metric_with_custom_granularity_filter
+  description: Simple metric queried with a filter on a custom grain, where that grain is not used in the group by.
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  where_filter: |
+    {{ render_time_constraint(render_time_dimension_template('listing__ds', 'alien_day'), start_time="2019-12-20") }}
+  check_query: |
+    SELECT
+      SUM(1) AS bookings
+    FROM {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts ON {{ render_date_trunc("l.created_at", TimeGranularity.DAY) }} = ts.ds
+    WHERE {{ render_time_constraint("ts.alien_day", start_time="2019-12-20") }}
+---
+integration_test:
+  name: simple_metric_with_custom_granularity_in_filter_and_group_by
+  description: Simple metric queried with a filter on a custom grain, where that grain is also used in the group by.
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__ds__alien_day"]
+  where_filter: |
+    {{ render_time_constraint(render_time_dimension_template('listing__ds', 'alien_day'), start_time="2019-12-20") }}
+  check_query: |
+    SELECT
+      ts.alien_day AS listing__ds__alien_day
+      , SUM(1) AS bookings
+    FROM {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts
+    ON {{ render_date_trunc("l.created_at", TimeGranularity.DAY) }} = ts.ds
+    WHERE {{ render_time_constraint("ts.alien_day", start_time="2019-12-20") }}
+    GROUP BY ts.alien_day
+---
+integration_test:
+  name: test_no_metrics_with_custom_granularity_filter
+  description: Group by items only queried with a filter on a custom grain, where that grain is not used in the group by.
+  model: SIMPLE_MODEL
+  group_bys: ["metric_time__day"]
+  where_filter: |
+    {{ render_time_constraint(render_time_dimension_template('listing__ds', 'alien_day'), start_time="2019-12-20") }}
+  check_query: |
+    SELECT
+      {{ render_date_trunc("ts.ds", TimeGranularity.DAY) }} AS metric_time__day
+    FROM {{ source_schema }}.dim_listings_latest l
+    CROSS JOIN {{ source_schema }}.mf_time_spine ts
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts2
+    ON {{ render_date_trunc("l.created_at", TimeGranularity.DAY) }} = ts2.ds
+    WHERE {{ render_time_constraint("ts2.alien_day", start_time="2019-12-20") }}
+    GROUP BY {{ render_date_trunc("ts.ds", TimeGranularity.DAY) }}
+---
+integration_test:
+  name: test_no_metrics_with_custom_granularity_in_filter_and_group_by
+  description: Group by items only queried with a filter on a custom grain, where that grain is also used in the group by.
+  model: SIMPLE_MODEL
+  group_bys: ["listing__ds__alien_day"]
+  where_filter: |
+    {{ render_time_constraint(render_time_dimension_template('listing__ds', 'alien_day'), start_time="2019-12-20") }}
+  check_query: |
+    SELECT
+      ts.alien_day AS listing__ds__alien_day
+    FROM {{ source_schema }}.dim_listings_latest l
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts
+      ON {{ render_date_trunc("l.created_at", TimeGranularity.DAY) }} = ts.ds
+    WHERE {{ render_time_constraint("ts.alien_day", start_time="2019-12-20") }}
+    GROUP BY ts.alien_day
+---
+integration_test:
+  name: test_simple_metric_with_multi_hop_custom_granularity
+  description: Test querying a simple metric with a custom grain on a multi-hop dimension
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__user__ds__alien_day"]
+  check_query: |
+    SELECT
+      ts.alien_day AS listing__user__ds__alien_day
+      , SUM(1) AS bookings
+    FROM {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l
+      ON b.listing_id = l.listing_id
+    LEFT OUTER JOIN {{ source_schema }}.dim_users u ON l.user_id = u.user_id
+      AND {{ render_date_trunc("b.ds_partitioned", TimeGranularity.DAY) }} = {{ render_date_trunc("u.ds_partitioned", TimeGranularity.DAY) }}
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts ON {{ render_date_trunc("u.ds", TimeGranularity.DAY) }} = ts.ds
+    GROUP BY ts.alien_day
+---
+integration_test:
+  name: test_offset_metric_with_custom_granularity_filter_not_in_group_by
+  description: Test querying a simple metric with a custom grain on a multi-hop dimension
+  model: SIMPLE_MODEL
+  metrics: ["bookings_5_day_lag"]
+  group_bys: ["metric_time__day"]
+  where_filter: |
+    {{ render_time_constraint(render_time_dimension_template('metric_time', 'alien_day'), start_time="2020-01-01") }}
+  check_query: |
+    SELECT
+      ts.ds AS metric_time__day
+      , SUM(1) AS bookings_5_day_lag
+    FROM {{ source_schema }}.mf_time_spine ts
+    INNER JOIN {{ source_schema }}.fct_bookings b ON {{ render_date_sub("ts", "ds", 5, TimeGranularity.DAY) }} = {{ render_date_trunc("b.ds", TimeGranularity.DAY) }}
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts1 ON ts.ds = ts1.ds
+    WHERE {{ render_time_constraint("ts1.alien_day", "2020-01-01") }}
+    GROUP BY ts.ds
+---
+integration_test:
+  name: test_conversion_metric_with_custom_granularity
+  description: Test querying a conversion metric with a custom grain
+  model: SIMPLE_MODEL
+  metrics: ["visit_buy_conversion_rate"]
+  group_bys: ["metric_time__alien_day"]
+  check_query: |
+    SELECT
+      metric_time__alien_day
+      , CAST(buys AS {{ double_data_type_name }}) / CAST(NULLIF(visits, 0) AS {{ double_data_type_name }}) AS visit_buy_conversion_rate
+    FROM (
+      SELECT
+        COALESCE(subq_5.metric_time__alien_day, subq_17.metric_time__alien_day) AS metric_time__alien_day
+        , MAX(subq_5.visits) AS visits
+        , MAX(subq_17.buys) AS buys
+      FROM (
+        SELECT
+          ts.alien_day AS metric_time__alien_day
+          , SUM(1) AS visits
+        FROM {{ source_schema }}.fct_visits v
+        LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts ON {{ render_date_trunc("V.ds", TimeGranularity.DAY) }} = ts.ds
+        GROUP BY ts.alien_day
+      ) subq_5
+      FULL OUTER JOIN (
+        SELECT
+          ts2.alien_day AS metric_time__alien_day
+          , SUM(subq_12.buys) AS buys
+        FROM (
+          SELECT DISTINCT
+            FIRST_VALUE(subq_8.visits) OVER (
+              PARTITION BY subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS visits
+            , FIRST_VALUE(subq_8.ds__day) OVER (
+              PARTITION BY subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS ds__day
+            , FIRST_VALUE(subq_8.metric_time__day) OVER (
+              PARTITION BY subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS metric_time__day
+            , FIRST_VALUE(subq_8.user) OVER (
+              PARTITION BY subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS user
+            , subq_11.mf_internal_uuid AS mf_internal_uuid
+            , subq_11.buys AS buys
+          FROM (
+            SELECT
+              {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS ds__day
+              , {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS metric_time__day
+              , user_id AS user
+              , 1 AS visits
+            FROM {{ source_schema }}.fct_visits v
+          ) subq_8
+          INNER JOIN (
+            SELECT
+              {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS ds__day
+              , user_id AS user
+              , 1 AS buys
+              , {{ generate_random_uuid() }} AS mf_internal_uuid
+            FROM {{ source_schema }}.fct_buys b
+          ) subq_11
+          ON subq_8.user = subq_11.user AND subq_8.ds__day <= subq_11.ds__day
+        ) subq_12
+        LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts2 ON subq_12.metric_time__day = ts2.ds
+        GROUP BY ts2.alien_day
+      ) subq_17
+      ON subq_5.metric_time__alien_day = subq_17.metric_time__alien_day
+      GROUP BY COALESCE(subq_5.metric_time__alien_day, subq_17.metric_time__alien_day)
+    ) subq_18
+---
+integration_test:
+  name: test_windowed_conversion_metric_with_custom_granularity
+  description: Test querying a windowed conversion metric with a custom grain
+  model: SIMPLE_MODEL
+  metrics: ["visit_buy_conversion_rate_7days"]
+  group_bys: ["metric_time__alien_day"]
+  check_query: |
+    SELECT
+      metric_time__alien_day
+      , CAST(buys AS {{ double_data_type_name }}) / CAST(NULLIF(visits, 0) AS {{ double_data_type_name }}) AS visit_buy_conversion_rate_7days
+    FROM (
+      SELECT
+        COALESCE(subq_5.metric_time__alien_day, subq_17.metric_time__alien_day) AS metric_time__alien_day
+        , MAX(subq_5.visits) AS visits
+        , MAX(subq_17.buys) AS buys
+      FROM (
+        SELECT
+          ts.alien_day AS metric_time__alien_day
+          , SUM(1) AS visits
+        FROM {{ source_schema }}.fct_visits v
+        LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts ON {{ render_date_trunc("V.ds", TimeGranularity.DAY) }} = ts.ds
+        GROUP BY ts.alien_day
+      ) subq_5
+      FULL OUTER JOIN (
+        SELECT
+          ts2.alien_day AS metric_time__alien_day
+          , SUM(subq_12.buys) AS buys
+        FROM (
+          SELECT DISTINCT
+            FIRST_VALUE(subq_8.visits) OVER (
+              PARTITION BY subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS visits
+            , FIRST_VALUE(subq_8.ds__day) OVER (
+              PARTITION BY
+                subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS ds__day
+            , FIRST_VALUE(subq_8.metric_time__day) OVER (
+              PARTITION BY subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS metric_time__day
+            , FIRST_VALUE(subq_8.user) OVER (
+              PARTITION BY subq_11.user, subq_11.ds__day, subq_11.mf_internal_uuid
+              ORDER BY subq_8.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS user
+            , subq_11.mf_internal_uuid AS mf_internal_uuid
+            , subq_11.buys AS buys
+          FROM (
+            SELECT
+              {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS ds__day
+              , {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS metric_time__day
+              , user_id AS user
+              , 1 AS visits
+            FROM {{ source_schema }}.fct_visits v
+          ) subq_8
+          INNER JOIN (
+            SELECT
+              {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS ds__day
+              , user_id AS user
+              , 1 AS buys
+              , {{ generate_random_uuid() }} AS mf_internal_uuid
+            FROM {{ source_schema }}.fct_buys b
+          ) subq_11
+          ON subq_8.user = subq_11.user AND subq_8.ds__day <= subq_11.ds__day
+            AND subq_8.ds__day > {{ render_date_sub("subq_11", "ds__day", 7, TimeGranularity.DAY) }}
+        ) subq_12
+        LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts2
+        ON subq_12.metric_time__day = ts2.ds
+        GROUP BY ts2.alien_day
+      ) subq_17
+      ON subq_5.metric_time__alien_day = subq_17.metric_time__alien_day
+      GROUP BY COALESCE(subq_5.metric_time__alien_day, subq_17.metric_time__alien_day)
+    ) subq_18
+---
+integration_test:
+  name: test_conversion_metric_with_custom_granularity_filter
+  description: Test querying a conversion metric with a custom grain in the filter (also in group by)
+  model: SIMPLE_MODEL
+  metrics: ["visit_buy_conversion_rate"]
+  group_bys: ["metric_time__alien_day"]
+  where_filter: |
+    {{ render_time_constraint(render_time_dimension_template('metric_time', 'alien_day'), start_time="2019-12-20") }}
+  check_query: |
+    SELECT
+      metric_time__alien_day
+      , CAST(buys AS {{ double_data_type_name }}) / CAST(NULLIF(visits, 0) AS {{ double_data_type_name }}) AS visit_buy_conversion_rate
+    FROM (
+      SELECT
+        COALESCE(subq_6.metric_time__alien_day, subq_19.metric_time__alien_day) AS metric_time__alien_day
+        , MAX(subq_6.visits) AS visits
+        , MAX(subq_19.buys) AS buys
+      FROM (
+        SELECT
+          metric_time__alien_day
+          , SUM(visits) AS visits
+        FROM (
+          SELECT
+            subq_1.visits AS visits
+            , subq_2.alien_day AS metric_time__alien_day
+          FROM (
+            SELECT
+              {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS metric_time__day
+              , 1 AS visits
+            FROM {{ source_schema }}.fct_visits v
+          ) subq_1
+          LEFT OUTER JOIN
+            {{ source_schema }}.mf_time_spine subq_2
+          ON
+            subq_1.metric_time__day = subq_2.ds
+        ) subq_3
+        WHERE CAST(metric_time__alien_day AS TIMESTAMP) >= CAST('2019-12-20' AS TIMESTAMP)
+        GROUP BY
+          metric_time__alien_day
+      ) subq_6
+      FULL OUTER JOIN (
+        SELECT
+          metric_time__alien_day
+          , SUM(buys) AS buys
+        FROM (
+          SELECT DISTINCT
+            FIRST_VALUE(subq_11.visits) OVER (
+              PARTITION BY
+                subq_14.user
+                , subq_14.ds__day
+                , subq_14.mf_internal_uuid
+              ORDER BY subq_11.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS visits
+            , FIRST_VALUE(subq_11.metric_time__alien_day) OVER (
+              PARTITION BY
+                subq_14.user
+                , subq_14.ds__day
+                , subq_14.mf_internal_uuid
+              ORDER BY subq_11.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS metric_time__alien_day
+            , FIRST_VALUE(subq_11.ds__day) OVER (
+              PARTITION BY
+                subq_14.user
+                , subq_14.ds__day
+                , subq_14.mf_internal_uuid
+              ORDER BY subq_11.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS ds__day
+            , FIRST_VALUE(subq_11.metric_time__day) OVER (
+              PARTITION BY
+                subq_14.user
+                , subq_14.ds__day
+                , subq_14.mf_internal_uuid
+              ORDER BY subq_11.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS metric_time__day
+            , FIRST_VALUE(subq_11.user) OVER (
+              PARTITION BY
+                subq_14.user
+                , subq_14.ds__day
+                , subq_14.mf_internal_uuid
+              ORDER BY subq_11.ds__day DESC
+              ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS user
+            , subq_14.mf_internal_uuid AS mf_internal_uuid
+            , subq_14.buys AS buys
+          FROM (
+            SELECT
+              metric_time__alien_day
+              , ds__day
+              , metric_time__day
+              , subq_9.user
+              , visits
+            FROM (
+              SELECT
+                subq_7.ds__day AS ds__day
+                , subq_7.ds__day AS metric_time__day
+                , subq_7.user AS user
+                , subq_7.visits AS visits
+                , subq_8.alien_day AS metric_time__alien_day
+              FROM (
+                SELECT
+                  1 AS visits
+                  , {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS ds__day
+                  , user_id AS user
+                FROM {{ source_schema }}.fct_visits v
+              ) subq_7
+              LEFT OUTER JOIN
+                {{ source_schema }}.mf_time_spine subq_8
+              ON
+                subq_7.ds__day = subq_8.ds
+            ) subq_9
+            WHERE CAST(metric_time__alien_day AS TIMESTAMP) >= CAST('2019-12-20' AS TIMESTAMP)
+          ) subq_11
+          INNER JOIN (
+            SELECT
+              {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS ds__day
+              , user_id AS user
+              , 1 AS buys
+              , {{ generate_random_uuid() }} AS mf_internal_uuid
+            FROM {{ source_schema }}.fct_buys b
+          ) subq_14
+          ON
+            (
+              subq_11.user = subq_14.user
+            ) AND (
+              (subq_11.ds__day <= subq_14.ds__day)
+            )
+        ) subq_15
+        GROUP BY
+          metric_time__alien_day
+      ) subq_19
+      ON
+        subq_6.metric_time__alien_day = subq_19.metric_time__alien_day
+      GROUP BY
+        COALESCE(subq_6.metric_time__alien_day, subq_19.metric_time__alien_day)
+    ) subq_20
+---
+integration_test:
+  name: test_conversion_metric_with_custom_granularity_filter_not_in_group_by
+  description: Test querying a conversion metric with a custom grain in the filter that's not in the group by
+  model: SIMPLE_MODEL
+  metrics: ["visit_buy_conversion_rate"]
+  where_filter: |
+    {{ render_time_constraint(render_time_dimension_template('metric_time', 'alien_day'), start_time="2019-12-20") }}
+  check_query: |
+    SELECT
+      CAST(MAX(subq_18.buys) AS {{ double_data_type_name }}) / CAST(NULLIF(MAX(subq_6.visits), 0) AS {{ double_data_type_name }}) AS visit_buy_conversion_rate
+    FROM (
+      SELECT
+        SUM(1) AS visits
+      FROM {{ source_schema }}.fct_visits v1
+      LEFT OUTER JOIN {{ source_schema }}.mf_time_spine ts ON {{ render_date_trunc("v1.ds", TimeGranularity.DAY) }} = ts.ds
+      WHERE CAST(ts.alien_day AS TIMESTAMP) >= CAST('2019-12-20' AS TIMESTAMP)
+    ) subq_6
+    CROSS JOIN (
+      SELECT
+        SUM(buys) AS buys
+      FROM (
+        SELECT DISTINCT
+          FIRST_VALUE(subq_11.visits) OVER (
+            PARTITION BY
+              subq_14.user
+              , subq_14.ds__day
+              , subq_14.mf_internal_uuid
+            ORDER BY subq_11.ds__day DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS visits
+          , FIRST_VALUE(subq_11.metric_time__alien_day) OVER (
+            PARTITION BY
+              subq_14.user
+              , subq_14.ds__day
+              , subq_14.mf_internal_uuid
+            ORDER BY subq_11.ds__day DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS metric_time__alien_day
+          , FIRST_VALUE(subq_11.ds__day) OVER (
+            PARTITION BY
+              subq_14.user
+              , subq_14.ds__day
+              , subq_14.mf_internal_uuid
+            ORDER BY subq_11.ds__day DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS ds__day
+          , FIRST_VALUE(subq_11.metric_time__day) OVER (
+            PARTITION BY
+              subq_14.user
+              , subq_14.ds__day
+              , subq_14.mf_internal_uuid
+            ORDER BY subq_11.ds__day DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS metric_time__day
+          , FIRST_VALUE(subq_11.user) OVER (
+            PARTITION BY
+              subq_14.user
+              , subq_14.ds__day
+              , subq_14.mf_internal_uuid
+            ORDER BY subq_11.ds__day DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS user
+          , subq_14.mf_internal_uuid AS mf_internal_uuid
+          , subq_14.buys AS buys
+        FROM (
+          SELECT
+            {{ render_date_trunc("v2.ds", TimeGranularity.DAY) }} AS ds__day
+            , {{ render_date_trunc("v2.ds", TimeGranularity.DAY) }} AS metric_time__day
+            , v2.user_id AS user
+            , 1 AS visits
+            , subq_8.alien_day AS metric_time__alien_day
+          FROM {{ source_schema }}.fct_visits v2
+          LEFT OUTER JOIN {{ source_schema }}.mf_time_spine subq_8 ON {{ render_date_trunc("v2.ds", TimeGranularity.DAY) }} = subq_8.ds
+          WHERE CAST(subq_8.alien_day AS TIMESTAMP) >= CAST('2019-12-20' AS TIMESTAMP)
+        ) subq_11
+        INNER JOIN (
+          SELECT
+            {{ render_date_trunc("ds", TimeGranularity.DAY) }} AS ds__day
+            , user_id AS user
+            , 1 AS buys
+            , {{ generate_random_uuid() }} AS mf_internal_uuid
+          FROM {{ source_schema }}.fct_buys b
+        ) subq_14
+        ON subq_11.user = subq_14.user AND subq_11.ds__day <= subq_14.ds__day
+      ) subq_15
+    ) subq_18
+---
+integration_test:
+  name: test_join_to_time_spine_metric_grouped_by_custom_grain
+  description: Test a join to time spine metric with custom grain in group by
+  model: SIMPLE_MODEL
+  metrics: ["bookings_join_to_time_spine"]
+  group_bys: ["metric_time__alien_day"]
+  check_query: |
+    SELECT
+      subq_6.metric_time__alien_day
+      , subq_5.bookings AS bookings_join_to_time_spine
+    FROM (
+      SELECT
+        alien_day AS metric_time__alien_day
+      FROM {{ source_schema }}.mf_time_spine subq_7
+      GROUP BY alien_day
+    ) subq_6
+    LEFT OUTER JOIN (
+      SELECT
+        subq_2.alien_day AS metric_time__alien_day
+        , SUM(1) AS bookings
+      FROM {{ source_schema }}.fct_bookings b
+      LEFT OUTER JOIN {{ source_schema }}.mf_time_spine subq_2
+      ON {{ render_date_trunc("b.ds", TimeGranularity.DAY) }} = subq_2.ds
+      GROUP BY subq_2.alien_day
+    ) subq_5
+    ON subq_6.metric_time__alien_day = subq_5.metric_time__alien_day
+---
+integration_test:
+  name: custom_offset_window
+  description: Test querying a metric with a custom offset window
+  model: SIMPLE_MODEL
+  metrics: ["bookings_offset_one_alien_day"]
+  group_bys: ["metric_time__day"]
+  check_query: |
+    WITH cte AS (
+      SELECT
+        ds AS ds__day
+        , alien_day AS ds__alien_day
+        , FIRST_VALUE(ds) OVER (
+          PARTITION BY alien_day
+          ORDER BY ds
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS ds__alien_day__first_value
+        , LAST_VALUE(ds) OVER (
+          PARTITION BY alien_day
+          ORDER BY ds
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS ds__alien_day__last_value
+        , ROW_NUMBER() OVER (
+          PARTITION BY alien_day
+          ORDER BY ds
+        ) AS ds__day__row_number
+      FROM {{ source_schema }}.mf_time_spine ts
+    )
+
+    SELECT
+      subq_8.ds__day__lead AS metric_time__day
+      , SUM(1) AS bookings_offset_one_alien_day
+    FROM (
+      SELECT
+        cte.ds__day AS ds__day
+        , CASE
+          WHEN {{ render_date_add("subq_7.ds__alien_day__first_value__offset", "(cte.ds__day__row_number - 1)", TimeGranularity.DAY) }} <= subq_7.ds__alien_day__last_value__offset
+            THEN {{ render_date_add("subq_7.ds__alien_day__first_value__offset", "(cte.ds__day__row_number - 1)", TimeGranularity.DAY) }}
+          ELSE subq_7.ds__alien_day__last_value__offset
+        END AS ds__day__lead
+      FROM cte
+      INNER JOIN (
+        SELECT
+          ds__alien_day
+          , LEAD(ds__alien_day__first_value, 1) OVER (ORDER BY ds__alien_day) AS ds__alien_day__first_value__offset
+          , LEAD(ds__alien_day__last_value, 1) OVER (ORDER BY ds__alien_day) AS ds__alien_day__last_value__offset
+        FROM (
+          SELECT
+            ds__alien_day__first_value
+            , ds__alien_day__last_value
+            , ds__alien_day
+          FROM cte
+          GROUP BY
+            ds__alien_day__first_value
+            , ds__alien_day__last_value
+            , ds__alien_day
+        ) subq_5
+      ) subq_7
+      ON cte.ds__alien_day = subq_7.ds__alien_day
+    ) subq_8
+    INNER JOIN {{ source_schema }}.fct_bookings b ON subq_8.ds__day = {{ render_date_trunc("b.ds", TimeGranularity.DAY) }}
+    GROUP BY subq_8.ds__day__lead
+---
+integration_test:
+  name: custom_offset_window_with_grain_and_date_part
+  description: Test querying a metric with a custom offset window
+  model: SIMPLE_MODEL
+  metrics: ["bookings_offset_one_alien_day"]
+  group_by_objs: [{"name": "booking__ds", "grain": "week"}, {"name": "metric_time", "date_part": "month"}, {"name": "booking__ds", "grain": "alien_day"}]
+  check_query: |
+    WITH cte AS (
+      SELECT
+        ds AS ds__day
+        , alien_day AS ds__alien_day
+        , FIRST_VALUE(ds) OVER (
+          PARTITION BY alien_day
+          ORDER BY ds
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS ds__alien_day__first_value
+        , LAST_VALUE(ds) OVER (
+          PARTITION BY alien_day
+          ORDER BY ds
+          ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS ds__alien_day__last_value
+        , ROW_NUMBER() OVER (
+          PARTITION BY alien_day
+          ORDER BY ds
+        ) AS ds__day__row_number
+      FROM {{ source_schema }}.mf_time_spine ts
+    )
+
+    SELECT
+      subq_11.alien_day AS booking__ds__alien_day
+      , {{ render_date_trunc("subq_8.ds__day__lead", TimeGranularity.WEEK) }} AS booking__ds__week
+      , {{ render_extract("subq_8.ds__day__lead", DatePart.MONTH) }} AS metric_time__extract_month
+      , SUM(1) AS bookings_offset_one_alien_day
+    FROM (
+      SELECT
+        cte.ds__day
+        , CASE
+          WHEN {{ render_date_add("subq_7.ds__alien_day__first_value__offset", "(cte.ds__day__row_number - 1)", TimeGranularity.DAY) }} <= subq_7.ds__alien_day__last_value__offset
+            THEN {{ render_date_add("subq_7.ds__alien_day__first_value__offset", "(cte.ds__day__row_number - 1)", TimeGranularity.DAY) }}
+          ELSE subq_7.ds__alien_day__last_value__offset
+        END AS ds__day__lead
+      FROM cte
+      INNER JOIN (
+        SELECT
+          ds__alien_day
+          , LEAD(ds__alien_day__first_value, 1) OVER (ORDER BY ds__alien_day) AS ds__alien_day__first_value__offset
+          , LEAD(ds__alien_day__last_value, 1) OVER (ORDER BY ds__alien_day) AS ds__alien_day__last_value__offset
+        FROM (
+          SELECT
+            ds__alien_day__first_value
+            , ds__alien_day__last_value
+            , ds__alien_day
+          FROM cte
+          GROUP BY
+            ds__alien_day__first_value
+            , ds__alien_day__last_value
+            , ds__alien_day
+        ) subq_5
+      ) subq_7
+      ON cte.ds__alien_day = subq_7.ds__alien_day
+    ) subq_8
+    INNER JOIN {{ source_schema }}.fct_bookings b ON subq_8.ds__day = {{ render_date_trunc("b.ds", TimeGranularity.DAY) }}
+    LEFT OUTER JOIN {{ source_schema }}.mf_time_spine subq_11 ON subq_8.ds__day__lead = subq_11.ds
+    GROUP BY
+      subq_11.alien_day
+      , {{ render_date_trunc("subq_8.ds__day__lead", TimeGranularity.WEEK) }}
+      , {{ render_extract("subq_8.ds__day__lead", DatePart.MONTH) }}

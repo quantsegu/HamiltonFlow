@@ -1,0 +1,38 @@
+test_name: test_get_names
+test_filename: test_semantic_model_container.py
+---
+{
+  'dimension_references': [
+    'account_type',
+    'archived_at',
+    'bio_added_ts',
+    'capacity_latest',
+    'company_name',
+    'country_latest',
+    'created_at',
+    'ds',
+    'ds_latest',
+    'ds_month',
+    'ds_partitioned',
+    'home_state',
+    'home_state_latest',
+    'is_instant',
+    'is_lux_latest',
+    'last_login_ts',
+    'last_profile_edit_ts',
+    'paid_at',
+    'referrer_id',
+    'verification_type',
+  ],
+  'entity_references': [
+    'company',
+    'guest',
+    'host',
+    'listing',
+    'lux_listing',
+    'session',
+    'session_id',
+    'user',
+    'verification',
+  ],
+}

@@ -1,0 +1,27 @@
+test_name: test_ambiguous_metric_time_in_query_filter[metrics_with_different_time_grains]
+test_filename: test_matching_item_for_filters.py
+---
+GroupByItemResolution(
+  spec=TimeDimensionSpec(
+    element_name='metric_time',
+    time_granularity=ExpandedTimeGranularity(name='year', base_granularity=YEAR),
+  ),
+  linkable_element_set=GroupByItemSet(
+    annotated_specs=(
+      AnnotatedSpec(
+        element_type=TIME_DIMENSION,
+        element_name='metric_time',
+        time_grain=ExpandedTimeGranularity(name='year', base_granularity=YEAR),
+        element_properties=(METRIC_TIME, DERIVED_TIME_GRANULARITY),
+        origin_semantic_model_names=(
+          'monthly_measures_source',
+          'yearly_measure_source',
+        ),
+        derived_from_semantic_model_names=(
+          'monthly_measures_source',
+          'yearly_measure_source',
+        ),
+      ),
+    ),
+  ),
+)

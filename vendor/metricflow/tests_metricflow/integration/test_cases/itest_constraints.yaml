@@ -1,0 +1,300 @@
+---
+integration_test:
+  name: test_overlapping_constraint_dimensions
+  description: Query a metric with a constraint that was requested as a dimension
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["metric_time", "booking__is_instant"]
+  where_filter: '{{ render_dimension_template("booking__is_instant") }}'
+  check_query: |
+    SELECT SUM(booking_value) AS booking_value
+      , is_instant AS booking__is_instant
+      , ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings
+    WHERE is_instant
+      GROUP BY
+      ds
+      , is_instant
+---
+integration_test:
+  name: test_constraint_non_requested_dimensions
+  description: Query a metric with a constraint that was not requested as a dimension
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["metric_time"]
+  where_filter: "{{ render_dimension_template('booking__is_instant') }}"
+  check_query: |
+    SELECT SUM(booking_value) AS booking_value
+      , ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings
+    WHERE is_instant
+    GROUP BY ds
+---
+integration_test:
+  name: test_query_with_constraint_on_joined_dimension
+  description: Query a metric with a constraint that was not requested as a dimension and is joined from another semantic model
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["booking__is_instant"]
+  where_filter: "{{ render_dimension_template('listing__country_latest') }} = 'us'"
+  check_query: |
+    SELECT SUM(booking_value) AS booking_value
+      , is_instant AS booking__is_instant
+    FROM  {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN  {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    WHERE l.country = 'us'
+    GROUP BY is_instant
+---
+integration_test:
+  name: test_time_constraint
+  description: Test a time constraint.
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["metric_time"]
+  time_constraint: ["2020-01-01", "2020-01-01"]
+  check_query: |
+    SELECT  SUM(booking_value) AS booking_value
+      , ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings b
+    WHERE {{ render_time_constraint("ds", "2020-01-01", "2020-01-01") }}
+    GROUP BY
+      ds
+---
+integration_test:
+  name: test_time_constraint_with_addition_dimension
+  description: Test a time constraint with another dimension.
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["metric_time"]
+  where_filter: "{{ render_dimension_template('booking__is_instant') }}"
+  time_constraint: ["2020-01-01", "2020-01-01"]
+  check_query: |
+    SELECT  SUM(booking_value) AS booking_value
+      , ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings b
+    WHERE is_instant
+      and {{ render_time_constraint("ds", "2020-01-01", "2020-01-01") }}
+    GROUP BY ds
+---
+integration_test:
+  name: test_bool_dim
+  description: Test a time constraint with a boolean
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["metric_time", "booking__is_instant"]
+  where_filter: "{{ render_dimension_template('booking__is_instant') }}"
+  check_query: |
+    SELECT  SUM(booking_value) AS booking_value
+      , is_instant AS booking__is_instant
+      , ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings b
+    WHERE is_instant
+    GROUP BY ds
+      , is_instant
+---
+integration_test:
+  name: test_int_dim
+  description: Test a time constraint with an integer
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  group_bys: ["metric_time"]
+  where_filter: "{{ render_dimension_template('listing__capacity_latest') }} >= 4"
+  check_query: |
+    SELECT  SUM(b.booking_value) AS booking_value
+      , b.ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN  {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    WHERE l.capacity >= 4
+    GROUP BY  b.ds
+---
+integration_test:
+  name: test_time_constraint_on_time_dimension_with_an_expression
+  description: Test a time constraint with an expr dimensions
+  model: SIMPLE_MODEL
+  metrics: ["listings"]
+  group_bys: ["metric_time"]
+  time_constraint: ["2020-01-01", "2020-01-02"]
+  check_query: |
+    SELECT  SUM(1) AS listings
+      , created_at AS metric_time__day
+    FROM  {{source_schema}}.dim_listings_latest l
+    WHERE {{ render_time_constraint("created_at", "2020-01-01", "2021-01-01") }}
+    GROUP BY  created_at
+---
+integration_test:
+  name: test_metric_time_in_where
+  description: Tests having metric_time in the where clause constraint.
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time"]
+  where_filter: "{{ render_time_constraint('metric_time__day', '2020-01-01', '2021-01-02') }}"
+  check_query: |
+    SELECT
+      SUM(1) AS bookings
+      , ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings
+    WHERE {{ render_time_constraint("ds", "2020-01-01", "2021-01-02") }}
+    GROUP BY ds
+---
+integration_test:
+  name: test_ambiguous_metric_time_in_query_filter
+  description: Tests having metric_time without a grain in the query filter.
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["metric_time"]
+  where_filter: "{{ render_time_dimension_template('metric_time') }} = {{ cast_to_ts('2020-01-01') }}"
+  check_query: |
+    SELECT
+      SUM(1) AS bookings
+      , ds AS metric_time__day
+    FROM  {{ source_schema }}.fct_bookings
+    WHERE ds = {{ cast_to_ts('2020-01-01') }}
+    GROUP BY ds
+---
+integration_test:
+  name: test_measure_source_constraint_with_joined_group_by
+  description: |
+    Tests a filter on the measure source with a joined in group by item that includes post-filter null values
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__is_lux_latest"]
+  where_filter: "NOT {{ render_dimension_template('booking__is_instant') }}"
+  check_query: |
+    SELECT
+      SUM(1) AS bookings
+      , l.is_lux AS listing__is_lux_latest
+    FROM {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    WHERE NOT b.is_instant
+    GROUP BY l.is_lux
+---
+integration_test:
+  name: test_constraint_with_joined_dimension_allowing_nulls
+  description: |
+    Tests a filter on a joined in dimension that allows post-filter null values
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__is_lux_latest"]
+  where_filter: |
+    NOT {{ render_dimension_template('listing__is_lux_latest') }}
+      OR {{ render_dimension_template('listing__is_lux_latest') }} IS NULL
+  check_query: |
+    SELECT
+      SUM(1) AS bookings
+      , l.is_lux AS listing__is_lux_latest
+    FROM {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    WHERE NOT l.is_lux OR l.is_lux IS NULL
+    GROUP BY l.is_lux
+---
+integration_test:
+  name: test_constraints_on_both_sides_of_a_join
+  description: |
+    Tests a filter on a joined in dimension AND a measure source dimension
+  model: SIMPLE_MODEL
+  metrics: ["bookings"]
+  group_bys: ["listing__is_lux_latest"]
+  where_filter: |
+    NOT {{ render_dimension_template('booking__is_instant') }}
+      AND (
+        NOT {{ render_dimension_template('listing__is_lux_latest') }}
+          OR {{ render_dimension_template('listing__is_lux_latest') }} IS NULL
+        )
+  check_query: |
+    SELECT
+      SUM(1) AS bookings
+      , l.is_lux AS listing__is_lux_latest
+    FROM {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    WHERE NOT b.is_instant AND (NOT l.is_lux OR l.is_lux IS NULL)
+    GROUP BY l.is_lux
+---
+integration_test:
+  name: test_constraints_on_joined_group_by_items
+  description: |
+    Tests a filter on a joined in dimension AND a measure source dimension
+  model: SIMPLE_MODEL
+  metrics: []
+  group_bys: ["listing__is_lux_latest", "booking__is_instant"]
+  where_filter: |
+    NOT {{ render_dimension_template('booking__is_instant') }}
+      AND (
+        NOT {{ render_dimension_template('listing__is_lux_latest') }}
+          OR {{ render_dimension_template('listing__is_lux_latest') }} IS NULL
+        )
+  check_query: |
+    SELECT DISTINCT
+      b.is_instant AS booking__is_instant
+      , l.is_lux AS listing__is_lux_latest
+    FROM {{ source_schema }}.fct_bookings b
+    LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest l ON b.listing_id = l.listing_id
+    WHERE NOT b.is_instant AND (NOT l.is_lux OR l.is_lux IS NULL)
+---
+integration_test:
+  name: test_subdaily_time_constraint
+  description: Test a sub-daily time constraint on a no-metric query.
+  model: SIMPLE_MODEL
+  group_bys: ["metric_time__second"]
+  time_constraint: ["2020-01-01 00:00:02", "2020-01-01 00:00:08"]
+  check_query: |
+    SELECT
+      {{ render_date_trunc("ts", TimeGranularity.SECOND) }} AS metric_time__second
+    FROM {{ source_schema }}.mf_time_spine_second
+    WHERE {{ render_time_constraint(render_date_trunc("ts", TimeGranularity.SECOND), "2020-01-01 00:00:02", "2020-01-01 00:00:08") }}
+    GROUP BY {{ render_date_trunc("ts", TimeGranularity.SECOND) }}
+---
+integration_test:
+  name: test_subdaily_time_constraint_with_metric
+  description: Test a sub-daily time constraint on a metric query.
+  model: SIMPLE_MODEL
+  metrics: ["subdaily_join_to_time_spine_metric"]
+  group_bys: ["metric_time__hour"]
+  time_constraint: ["2020-01-01 02:00:00", "2020-01-03 05:00:00"]
+  check_query: |
+    SELECT
+      ts AS metric_time__hour
+      , archived_users AS subdaily_join_to_time_spine_metric
+    FROM {{ source_schema }}.mf_time_spine_hour
+    LEFT OUTER JOIN (
+      SELECT
+        {{ render_date_trunc("archived_at", TimeGranularity.HOUR) }} AS metric_time__hour
+        , SUM(1) AS archived_users
+      FROM {{ source_schema }}.dim_users
+      GROUP BY {{ render_date_trunc("archived_at", TimeGranularity.HOUR) }}
+    ) subq_4 ON ts = subq_4.metric_time__hour
+    WHERE {{ render_time_constraint("ts", "2020-01-01 02:00:00", "2020-01-03 05:00:00") }}
+---
+integration_test:
+  name: test_subdaily_time_constraint_adjusted
+  description: Tests a sub-daily time constraint that requires adjusting.
+  model: SIMPLE_MODEL
+  metrics: ["subdaily_join_to_time_spine_metric"]
+  group_bys: ["metric_time__hour"]
+  time_constraint: ["2020-01-01 02:00:25", "2020-01-03 05:00:53"]
+  check_query: |
+    SELECT
+      ts AS metric_time__hour
+      , subdaily_join_to_time_spine_metric
+    FROM {{ source_schema }}.mf_time_spine_hour
+    LEFT OUTER JOIN (
+      SELECT
+        {{ render_date_trunc("archived_at", TimeGranularity.HOUR) }} AS metric_time__hour
+        , SUM(1) AS subdaily_join_to_time_spine_metric
+      FROM {{ source_schema }}.dim_users
+      WHERE {{ render_time_constraint(render_date_trunc("archived_at", TimeGranularity.HOUR), "2020-01-01 02:00:00", "2020-01-03 05:59:59") }}
+      GROUP BY {{ render_date_trunc("archived_at", TimeGranularity.HOUR) }}
+    ) subq_4
+    ON ts = subq_4.metric_time__hour
+    WHERE {{ render_time_constraint("ts", "2020-01-01 02:00:00", "2020-01-03 05:59:59") }}
+---
+integration_test:
+  name: test_metric_time_in_dimension_jinja
+  description: Query a metric with metric_time in the Dimension object of the where filter
+  model: SIMPLE_MODEL
+  metrics: ["booking_value"]
+  where_filter: '{{ render_dimension_template("metric_time") }} = {{ cast_to_ts("2020-01-01") }}'
+  check_query: |
+    SELECT
+      SUM(booking_value) AS booking_value
+    FROM {{ source_schema }}.fct_bookings
+    WHERE {{ render_time_constraint("ds", "2020-01-01", "2020-01-01") }}
