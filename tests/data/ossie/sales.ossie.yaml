@@ -1,0 +1,40 @@
+version: "0.2.0.dev0"
+name: sales
+datasets:
+  - name: orders
+    source: main.orders
+    primary_key: [order_id]
+    fields:
+      - name: ordered_at
+        datatype: Date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: ordered_at}]}
+      - name: status
+        datatype: String
+        expression: {dialects: [{dialect: ANSI_SQL, expression: status}]}
+      - name: amount
+        expression: {dialects: [{dialect: ANSI_SQL, expression: amount}]}
+        dimension: {is_time: false}
+      - name: customer_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
+  - name: customers
+    source: main.customers
+    primary_key: [customer_id]
+    fields:
+      - name: country
+        datatype: String
+        expression: {dialects: [{dialect: ANSI_SQL, expression: country}]}
+relationships:
+  - name: orders_to_customers
+    from: orders
+    to: customers
+    from_columns: [customer_id]
+    to_columns: [customer_id]
+metrics:
+  - name: revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "SUM(orders.amount)"}]}
+  - name: orders_placed
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT orders.order_id)"}]}
+  - name: avg_ticket
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "SUM(orders.amount) / COUNT(DISTINCT orders.order_id)"}]}
+  - name: running
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "SUM(SUM(orders.amount)) OVER (ORDER BY orders.ordered_at)"}]}

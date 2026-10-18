@@ -1,6 +1,0 @@
-ort:
-  forceOverwrite: true
-  analyzer:
-    enabledPackageManagers: [PIP]
-  downloader:
-    sourceCodeOrigins: [ARTIFACT]

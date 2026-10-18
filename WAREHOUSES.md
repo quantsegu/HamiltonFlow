@@ -1,12 +1,12 @@
 # Warehouse capability
 
-The new warehouse paths support configuration and SQL generation for Databricks, Snowflake, and ClickHouse. DuckDB remains the default for existing local examples. No live warehouse tests were performed. Offline SQL compilation and driver stubs do not certify production execution.
+The new warehouse paths support configuration and SQL generation for Databricks, Snowflake, and ClickHouse. DuckDB remains the default for existing local examples. **Status:** DuckDB supported; ClickHouse is exercised live in CI (`tests/live`, parity against DuckDB); Snowflake and Databricks are **experimental** (offline SQL tests only, never run against a real account).
 
-| Backend | Metric compilation | Vault / execution |
+| Backend | Metric compilation | Execution client |
 |---|---|---|
-| Databricks | Native MetricFlow renderer | Dialect SQL; SQL Connector or native SQLMesh gateway |
-| Snowflake | Native MetricFlow renderer | Dialect SQL; Python Connector or native SQLMesh gateway |
-| ClickHouse | DuckDB MetricFlow renderer translated through SQLGlot; limited bridge | ClickHouse SQL and MergeTree; clickhouse-connect or native SQLMesh gateway |
+| Databricks | Native MetricFlow renderer | SQL Connector |
+| Snowflake | Native MetricFlow renderer | Python Connector |
+| ClickHouse | DuckDB MetricFlow renderer translated through SQLGlot; limited bridge | clickhouse-connect |
 
 ClickHouse is not a native upstream MetricFlow backend. Unsupported translations fail rather than silently falling back. Use a modern ClickHouse release (25.8+ recommended) for correlated subqueries and window queries; this version floor has not been live certified. Do not assume complete MetricFlow feature parity. Remote MetricFlow bound parameters currently fail closed; use requests that compile to resolved SQL.
 
@@ -24,11 +24,11 @@ Databricks and Snowflake accept `catalog.schema.table` / `database.schema.table`
 
 ## Execution boundaries
 
-Compilation writes local artifacts only. Query, run, or apply commands connect and can write to the configured destination; these commands were not executed against remote warehouses during development. Precreate landing/source relations and grant the execution identity access to source and destination schemas. Remote vault paths do not upload local CSV files.
+HamiltonFlow runs **read queries only**. It does not create, load or modify tables. Precreate the source relations and grant the execution identity read access. Remote bound parameters fail closed; use requests that compile to resolved SQL.
 
-Use a dedicated staging schema and a single writer with immutable source data during each run. Remote runs do not offer whole-batch rollback, the DuckDB run ledger, automatic schema migration, or concurrency protection. A failed run can leave partial writes. SQLMesh audits may run after materialization. Review generated SQL and plan before production use.
+## Materialization is out of scope
 
-Generated SQLMesh projects use local DuckDB state in `sqlmesh_state.duckdb`, suitable for a single host. Configure an appropriate shared SQLMesh state backend for distributed production deployment. Warehouse data resides in the target engine; local state is orchestration metadata.
+Earlier revisions described a SQLMesh "vault" materialization path (including a run ledger with no rollback or concurrency protection). That is not supported or documented as a feature. `hamilton_flow.warehouse.sqlmesh_config` remains as an unsupported experimental helper; do not use it for production writes. A real materialization story belongs in a separate package with transactional semantics and live tests.
 
 ## References
 
@@ -43,8 +43,10 @@ Generated SQLMesh projects use local DuckDB state in `sqlmesh_state.duckdb`, sui
 hamilton-flow explain --manifest path/to/semantic_manifest.json --request path/to/request.json --warehouse examples/warehouses/databricks.json
 ```
 
-`explain` compiles offline. Replace `explain` with `query` only when ready to connect. Python callers can pass `WarehouseClient(config)` to `HamiltonFlow`; close the client after use. This query API returns results; target-table materialization is provided by SQLMeshFlow below, not by the HamiltonFlow query command.
+`explain` compiles offline. Replace `explain` with `query` only when ready to connect. Python callers can pass `WarehouseClient(config)` to `HamiltonFlow`; close the client after use. The query API returns results only; it does not materialize tables.
 
 ## Validation record
 
-The local regression suite passed **33 tests** on 2026-09-18. The checked-in [JUnit report](reports/warehouse-regression.xml) includes DuckDB regressions, offline warehouse compilation and driver stubs. No Databricks, Snowflake or ClickHouse service was contacted. SQL parsing establishes compilation coverage, not live backend certification.
+* DuckDB: integration and property-based tests on every CI run.
+* ClickHouse 26.x: `tests/live/test_clickhouse_live.py` runs six representative requests (simple, ratio, derived, cumulative, filtered, time-grouped) on a real server and requires results identical to DuckDB. CI uses a ClickHouse service container.
+* Snowflake, Databricks: offline renderer and connector-stub tests only.

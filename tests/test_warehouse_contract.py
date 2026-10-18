@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import sqlglot
+
 from hamilton_flow.warehouse import Connection, options, relation, render, validate
 
 ROOT = Path(__file__).parents[1]

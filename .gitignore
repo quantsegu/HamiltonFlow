@@ -13,3 +13,4 @@ logs/
 .sqlmesh-user/
 load_state.json
 .DS_Store
+reports/

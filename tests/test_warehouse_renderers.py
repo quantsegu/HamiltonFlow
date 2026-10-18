@@ -3,10 +3,11 @@ from pathlib import Path
 
 import pytest
 import sqlglot
+from metricflow.engine.metricflow_engine import MetricFlowQueryRequest
+
 from hamilton_flow import HamiltonFlow
 from hamilton_flow.warehouse import Connection
 from hamilton_flow.warehouse_client import WarehouseClient
-from metricflow.engine.metricflow_engine import MetricFlowQueryRequest
 
 ROOT = Path(__file__).parents[1]
 

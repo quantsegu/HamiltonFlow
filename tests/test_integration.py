@@ -3,15 +3,17 @@ from pathlib import Path
 
 import duckdb
 import pytest
-from hamilton_flow import HamiltonFlow
-from hamilton_flow.client import DuckDBClient
-from hamilton_flow.nodes import semantic_manifest
 from metricflow.engine.metricflow_engine import MetricFlowEngine, MetricFlowQueryRequest
 from metricflow_semantics.errors.error_classes import (
     InvalidQueryException,
     UnknownMetricError,
 )
 from metricflow_semantics.model.semantic_manifest_lookup import SemanticManifestLookup
+
+from hamilton_flow import HamiltonFlow
+from hamilton_flow.client import DuckDBClient
+from hamilton_flow.errors import RequestError
+from hamilton_flow.nodes import load_manifest as semantic_manifest
 
 EXAMPLES = Path(__file__).parents[1] / "examples"
 
@@ -26,9 +28,14 @@ def session():
 def test_hamilton_dag_is_real(session):
     names = {v.name for v in session.driver.list_available_variables()}
     assert {
+        "manifest_fingerprint",
+        "request_fingerprint",
+        "parsed_manifest",
         "semantic_manifest",
         "metric_engine",
         "compiled_query",
+        "compiled_sql",
+        "raw_result",
         "query_result",
     } <= names
 
@@ -103,13 +110,15 @@ def test_same_as_direct_upstream(session, metrics, groups):
     )
     direct = native.query(request).result_df
     actual = session.query(request)
-    assert actual.rows == direct.rows
-    assert actual.column_descriptions == direct.column_descriptions
+    assert [tuple(r) for r in actual.rows] == [tuple(r) for r in direct.rows]
+    assert list(actual.columns) == [c.column_name for c in direct.column_descriptions]
 
 
 def test_invalid_metric_rejected(session):
-    with pytest.raises((InvalidQueryException, UnknownMetricError)):
+    with pytest.raises(RequestError) as info:
         session.query(MetricFlowQueryRequest.create(metric_names=["does_not_exist"]))
+    assert isinstance(info.value.__cause__, (InvalidQueryException, UnknownMetricError))
+    assert info.value.to_dict()["error"]["kind"] == "request"
 
 
 def test_manifest_json_round_trip(session, tmp_path):
