@@ -14,7 +14,7 @@ forked or vendored. HamiltonFlow adds what MetricFlow alone does not:
 | **Result checks** | Hamilton `@check_output_custom` validates the result shape before it is returned. |
 | **Structured errors** | `ManifestError`, `RequestError`, `WarehouseError` (+ `to_dict()`); Pydantic request validation with field-level messages. |
 | **Interchange** | Apache Ossie import/export, LookML import, each with an explicit report of what could not be converted. |
-| **Serving** | FastAPI app and MCP server exposing `catalog`, `explain`, `query`. |
+| **Serving** | Web Explorer UI, FastAPI app and MCP server exposing `catalog`, `explain`, `query`. |
 
 ## Support matrix
 
@@ -117,6 +117,8 @@ Converted projects need a physical `time_spine` table (the converter writes the
 hamilton-flow serve --manifest examples/semantic --database demo.duckdb --transport http      # POST /query /explain, GET /catalog /lineage
 hamilton-flow serve --manifest examples/semantic --database demo.duckdb --transport mcp       # stdio MCP for agents
 ```
+
+Open `http://127.0.0.1:8000/` for the **Explorer**: pick metrics and compatible group-bys, filter, run or explain, and see results, SQL, cache hit/miss and the DAG with per-node timings (nodes skipped by a cache hit are dashed).
 
 Requests are serialized (one session owns one SQL connection). There is no authentication:
 put it behind your own gateway and use a read-only database user. Manifest filter

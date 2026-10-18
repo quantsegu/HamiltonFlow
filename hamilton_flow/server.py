@@ -9,12 +9,14 @@ Requests are serialized with a lock because one session owns one SQL connection.
 from __future__ import annotations
 
 import threading
+from pathlib import Path
 from typing import Any
 
 from .api import HamiltonFlow
 from .errors import HamiltonFlowError, WarehouseError
 from .requests import request_from_dict
 
+UI_FILE = Path(__file__).parent / "ui" / "index.html"
 _STATUS = {"request": 422, "manifest": 500, "warehouse": 502, "result": 500}
 
 
@@ -34,10 +36,17 @@ class Service:
     def catalog(self) -> tuple[dict, int]:
         return self._guard(self.flow.catalog)
 
+    def explorer_catalog(self) -> tuple[dict, int]:
+        return self._guard(lambda: {"metrics": self.flow.explorer_catalog()})
+
     def explain(self, request: dict[str, Any]) -> tuple[dict, int]:
         def run():
             compiled = self.flow.compile(request_from_dict(request))
-            return {"sql": compiled.sql, "dialect": compiled.dialect}
+            return {
+                "sql": compiled.sql,
+                "dialect": compiled.dialect,
+                "run": self.flow.last_run,
+            }
 
         return self._guard(run)
 
@@ -52,6 +61,7 @@ class Service:
                 "row_count": result.row_count,
                 "truncated": truncated,
                 "sql": result.sql,
+                "run": self.flow.last_run,
             }
 
         return self._guard(run)
@@ -59,7 +69,7 @@ class Service:
 
 def create_app(flow: HamiltonFlow, max_rows: int = 10_000):
     from fastapi import FastAPI
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import HTMLResponse, JSONResponse
 
     service = Service(flow, max_rows)
     app = FastAPI(title="HamiltonFlow", version="0.2.0")
@@ -67,6 +77,14 @@ def create_app(flow: HamiltonFlow, max_rows: int = 10_000):
     def respond(pair):
         body, status = pair
         return JSONResponse(body, status_code=status)
+
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    def ui():
+        return HTMLResponse(UI_FILE.read_text(encoding="utf-8"))
+
+    @app.get("/explorer/catalog")
+    def explorer_catalog():
+        return respond(service.explorer_catalog())
 
     @app.get("/catalog")
     def catalog():

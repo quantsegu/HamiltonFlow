@@ -9,6 +9,7 @@ provided.
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 import uuid
 from collections.abc import Callable
@@ -124,4 +125,30 @@ class OpenLineageEmitter(lc.GraphExecutionHook):
         self._starts.pop(run_id, None)
         self.sink(
             self._event("COMPLETE" if success else "FAIL", run_id, facets, inputs=inputs)
+        )
+
+
+class RunRecorder(lc.NodeExecutionHook):
+    """Records per-node wall time for the most recent HamiltonFlow call."""
+
+    def __init__(self) -> None:
+        self.nodes: list[dict[str, Any]] = []
+        self._started: dict[tuple[str, str], float] = {}
+
+    def reset(self) -> None:
+        self.nodes = []
+        self._started = {}
+
+    def run_before_node_execution(self, *, node_name, run_id, **_):
+        self._started[(run_id, node_name)] = time.perf_counter()
+
+    def run_after_node_execution(self, *, node_name, node_tags, run_id, success, error, **_):
+        began = self._started.pop((run_id, node_name), time.perf_counter())
+        self.nodes.append(
+            {
+                "node": node_name,
+                "stage": node_tags.get("stage"),
+                "ms": round((time.perf_counter() - began) * 1000, 3),
+                "ok": success,
+            }
         )

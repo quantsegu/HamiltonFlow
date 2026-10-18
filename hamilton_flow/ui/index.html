@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HamiltonFlow Explorer</title>
+<style>
+:root{--bg:#f7f7f5;--panel:#fff;--ink:#1c1c1a;--mute:#6b6b66;--line:#e3e3df;--accent:#3d5afe;--ok:#1b7f4b;--warn:#b26a00;--err:#c62828;--chip:#eef0ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#141415;--panel:#1d1d1f;--ink:#ececea;--mute:#9a9a95;--line:#2e2e31;--accent:#8c9eff;--ok:#5fcf93;--warn:#f0b04a;--err:#ff7b72;--chip:#262a4a}}
+:root[data-theme=dark]{--bg:#141415;--panel:#1d1d1f;--ink:#ececea;--mute:#9a9a95;--line:#2e2e31;--accent:#8c9eff;--ok:#5fcf93;--warn:#f0b04a;--err:#ff7b72;--chip:#262a4a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:16px;margin:0}
+header .sp{flex:1}
+.app{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 50px)}
+aside{border-right:1px solid var(--line);background:var(--panel);padding:14px 16px;overflow:auto}
+main{padding:16px;min-width:0}
+@media(max-width:800px){.app{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:16px 0 6px}
+h2:first-child{margin-top:0}
+label.item{display:flex;gap:8px;align-items:flex-start;padding:4px 0;cursor:pointer}
+.badge{font-size:11px;padding:1px 6px;border-radius:9px;background:var(--chip);color:var(--accent);white-space:nowrap}
+.muted{color:var(--mute)}
+input[type=text],input[type=number],input[type=datetime-local],textarea,select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:56px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+button{font:inherit;padding:7px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){button.primary{color:#101018}}
+button:disabled{opacity:.5;cursor:default}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.tab{padding:8px 12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--mute)}
+.tab.on{color:var(--ink);border-color:var(--accent)}
+.status{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{font-size:12px;color:var(--mute);background:var(--bg)}
+td.num{text-align:right}
+.scroll{overflow:auto}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;overflow:auto;font-size:12.5px;margin:0}
+.err{border:1px solid var(--err);border-radius:6px;padding:10px 12px;background:var(--panel)}
+.err b{color:var(--err)}
+.pipe{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
+.stage h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+.node{border:1px solid var(--line);border-radius:6px;padding:5px 7px;margin-bottom:6px;font-size:12.5px}
+.node .ms{float:right;font-variant-numeric:tabular-nums}
+.node.skipped{opacity:.55;border-style:dashed}
+.node.bad{border-color:var(--err)}
+.bar{height:3px;background:var(--accent);border-radius:2px;margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;gap:4px;align-items:center;background:var(--chip);color:var(--accent);padding:2px 8px;border-radius:12px;font-size:12px}
+.pill{padding:2px 8px;border-radius:12px;font-size:12px;border:1px solid var(--line)}
+.pill.hit{color:var(--ok);border-color:var(--ok)}.pill.miss{color:var(--warn);border-color:var(--warn)}
+</style>
+</head>
+<body>
+<header>
+  <h1>HamiltonFlow Explorer</h1><span class="muted" id="summary"></span><span class="sp"></span>
+  <button id="theme" title="Toggle theme">Theme</button>
+</header>
+<div class="app">
+<aside>
+  <h2>Metrics</h2><div id="metrics" class="muted">Loading…</div>
+  <h2>Group by</h2><div id="dims" class="muted">Select a metric</div>
+  <h2>Filter</h2>
+  <textarea id="where" placeholder="{{ Dimension('order__status') }} = 'paid'"></textarea>
+  <h2>Time range</h2>
+  <div class="row"><input type="datetime-local" id="t0" aria-label="Start"><input type="datetime-local" id="t1" aria-label="End"></div>
+  <h2>Order &amp; limit</h2>
+  <div class="row"><input type="text" id="order" placeholder="-revenue, customer__country"><input type="number" id="limit" min="0" placeholder="limit"></div>
+  <div class="row" style="margin-top:14px"><button id="explain">Explain</button><button id="run" class="primary">Run query</button></div>
+</aside>
+<main>
+  <div class="status" id="status"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+</main>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const state={metrics:[],selected:new Set(),groups:new Set(),tab:'Results',data:null,error:null,lineage:[]};
+const STAGES=['ingest','parse','validate','plan','render','execute','check'];
+const GRAINS=['day','week','month','quarter','year'];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path,body){
+  const r=await fetch(path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{});
+  return {ok:r.ok,status:r.status,json:await r.json()};
+}
+function buildRequest(){
+  const req={metric_names:[...state.selected]};
+  if(state.groups.size)req.group_by_names=[...state.groups];
+  const w=$('#where').value.trim(); if(w)req.where_constraints=[w];
+  const o=$('#order').value.split(',').map(s=>s.trim()).filter(Boolean); if(o.length)req.order_by_names=o;
+  if($('#limit').value!=='')req.limit=Number($('#limit').value);
+  if($('#t0').value)req.time_constraint_start=$('#t0').value;
+  if($('#t1').value)req.time_constraint_end=$('#t1').value;
+  return req;
+}
+function common(){
+  const sel=state.metrics.filter(m=>state.selected.has(m.name));
+  if(!sel.length)return [];
+  const maps=sel.map(m=>new Map(m.dimensions.map(d=>[d.name,d])));
+  return [...maps[0].values()].filter(d=>maps.every(m=>m.has(d.name)));
+}
+function renderMetrics(){
+  $('#metrics').innerHTML=state.metrics.map(m=>`<label class="item"><input type="checkbox" data-m="${esc(m.name)}" ${state.selected.has(m.name)?'checked':''}><span>${esc(m.name)} <span class="badge">${esc(m.type)}</span>${m.description?`<br><span class="muted">${esc(m.description)}</span>`:''}</span></label>`).join('')||'No metrics';
+  document.querySelectorAll('[data-m]').forEach(e=>e.onchange=()=>{e.checked?state.selected.add(e.dataset.m):state.selected.delete(e.dataset.m);
+    const ok=new Set(common().map(d=>d.name));[...state.groups].forEach(g=>{if(!ok.has(g)&&!ok.has(base(g)+'__day')&&![...ok].some(n=>base(n)===base(g)))state.groups.delete(g)});renderDims()});
+}
+const base=n=>{const i=n.lastIndexOf('__');return GRAINS.includes(n.slice(i+2))?n.slice(0,i):n};
+function renderDims(){
+  const dims=common(), seen=new Set(), out=[];
+  for(const d of dims){
+    const b=d.type==='time'?base(d.name):d.name; if(seen.has(b))continue; seen.add(b);
+    if(d.type==='time'){
+      const cur=[...state.groups].find(g=>base(g)===b);
+      const g=cur?cur.slice(b.length+2):'';
+      out.push(`<div class="row" style="align-items:center;margin:3px 0"><label class="item" style="flex:2"><input type="checkbox" data-t="${esc(b)}" ${cur?'checked':''}><span>${esc(b)} <span class="badge">time</span></span></label><select data-g="${esc(b)}" ${cur?'':'disabled'}>${GRAINS.map(x=>`<option ${x===(g||'day')?'selected':''}>${x}</option>`).join('')}</select></div>`);
+    } else out.push(`<label class="item"><input type="checkbox" data-d="${esc(d.name)}" ${state.groups.has(d.name)?'checked':''}><span>${esc(d.name)}</span></label>`);
+  }
+  $('#dims').innerHTML=out.join('')||'<span class="muted">Select a metric</span>';
+  document.querySelectorAll('[data-d]').forEach(e=>e.onchange=()=>{e.checked?state.groups.add(e.dataset.d):state.groups.delete(e.dataset.d)});
+  const setTime=b=>{[...state.groups].filter(g=>base(g)===b).forEach(g=>state.groups.delete(g));
+    const on=document.querySelector(`[data-t="${CSS.escape(b)}"]`).checked, sel=document.querySelector(`[data-g="${CSS.escape(b)}"]`);
+    sel.disabled=!on; if(on)state.groups.add(b+'__'+sel.value)};
+  document.querySelectorAll('[data-t]').forEach(e=>e.onchange=()=>setTime(e.dataset.t));
+  document.querySelectorAll('[data-g]').forEach(e=>e.onchange=()=>setTime(e.dataset.g));
+}
+function fmt(v){return typeof v==='number'?(Number.isInteger(v)?v.toLocaleString():v.toLocaleString(undefined,{maximumFractionDigits:4})):esc(v??'')}
+function statusBar(){
+  const d=state.data, el=$('#status'); el.innerHTML='';
+  if(d?.run){const c=d.run.cache; el.innerHTML+=c?`<span class="pill ${c}">cache ${c}</span>`:'<span class="pill">cache off</span>';
+    const ms=d.run.nodes.reduce((a,n)=>a+n.ms,0); el.innerHTML+=`<span class="pill">${ms.toFixed(1)} ms in DAG</span>`}
+  if(d?.row_count!=null)el.innerHTML+=`<span class="pill">${d.row_count} row${d.row_count===1?'':'s'}${d.truncated?' (truncated)':''}</span>`;
+}
+function view(){
+  const tabs=['Results','SQL','Pipeline'];
+  $('#tabs').innerHTML=tabs.map(t=>`<div class="tab ${t===state.tab?'on':''}" data-tab="${t}">${t}</div>`).join('');
+  document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>{state.tab=e.dataset.tab;view()});
+  statusBar();
+  const v=$('#view');
+  if(state.error){const e=state.error.error||{};v.innerHTML=`<div class="err"><b>${esc(e.kind||'error')} error</b> <span class="muted">(${esc(e.type||'')})</span><pre style="border:0;padding:6px 0 0;white-space:pre-wrap">${esc(e.message||JSON.stringify(state.error))}</pre></div>`;return}
+  const d=state.data; if(!d){v.innerHTML='<p class="muted">Pick metrics and run a query.</p>';return}
+  if(state.tab==='Results'){
+    if(!d.rows){v.innerHTML='<p class="muted">Explain only: no results. Use Run query.</p>';return}
+    v.innerHTML=`<div class="scroll"><table><thead><tr>${d.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${d.rows.map(r=>`<tr>${d.columns.map(c=>`<td class="${typeof r[c]==='number'?'num':''}">${fmt(r[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  } else if(state.tab==='SQL'){
+    v.innerHTML=`<pre>${esc(d.sql)}</pre><p><button id="copy">Copy SQL</button> <span class="muted">dialect: ${esc(d.dialect||'')}</span></p>`;
+    $('#copy').onclick=()=>navigator.clipboard?.writeText(d.sql);
+  } else {
+    const ran=new Map((d.run?.nodes||[]).map(n=>[n.node,n])), max=Math.max(1,...[...ran.values()].map(n=>n.ms));
+    v.innerHTML=`<div class="pipe">${STAGES.map(s=>`<div class="stage"><h3>${s}</h3>${state.lineage.filter(n=>n.stage===s).map(n=>{const r=ran.get(n.node);
+      return `<div class="node ${r?(r.ok?'':'bad'):'skipped'}" title="depends on: ${esc(n.depends_on.join(', ')||'inputs')}"><span class="ms">${r?r.ms.toFixed(1)+' ms':'skipped'}</span>${esc(n.node)}${r?`<div class="bar" style="width:${Math.max(2,r.ms/max*100)}%"></div>`:''}</div>`}).join('')}</div>`).join('')}</div>
+      <p class="muted">Dashed nodes did not run${d.run?.cache==='hit'?': the compiled SQL came from the cache.':'.'} Hover a node for its dependencies.</p>`;
+  }
+}
+async function go(kind){
+  if(!state.selected.size){state.error={error:{kind:'request',message:'Select at least one metric.'}};state.data=null;view();return}
+  $('#run').disabled=$('#explain').disabled=true;
+  const r=await api(kind==='run'?'/query':'/explain',buildRequest());
+  $('#run').disabled=$('#explain').disabled=false;
+  if(r.ok){state.data=r.json;state.error=null;state.tab=kind==='run'?'Results':'SQL'}else{state.error=r.json;state.data=null}
+  view();
+}
+$('#run').onclick=()=>go('run'); $('#explain').onclick=()=>go('explain');
+$('#theme').onclick=()=>{const r=document.documentElement,dark=getComputedStyle(r).getPropertyValue('--bg').trim()==='#141415';r.dataset.theme=dark?'light':'dark'};
+(async()=>{
+  const [c,l]=await Promise.all([api('/explorer/catalog'),api('/lineage')]);
+  if(!c.ok){state.error=c.json;view();$('#metrics').textContent='Failed to load catalog';return}
+  state.metrics=c.json.metrics; state.lineage=l.json; $('#summary').textContent=`${state.metrics.length} metrics`;
+  renderMetrics(); view();
+})();
+</script>
+</body>
+</html>

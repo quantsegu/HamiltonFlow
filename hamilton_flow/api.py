@@ -17,7 +17,7 @@ from metricflow_semantics.errors.error_classes import (
 from . import nodes
 from .cache import CompiledSqlCache
 from .errors import HamiltonFlowError, RequestError
-from .lineage import OpenLineageEmitter, Sink
+from .lineage import OpenLineageEmitter, RunRecorder, Sink
 from .nodes import CompiledSql, QueryResult
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,9 @@ class HamiltonFlow:
         self.manifest_path = str(Path(manifest_path).resolve())
         self.sql_client = sql_client
         self.sql_dialect = sql_client.sql_engine_type.value.lower()
-        builder = driver.Builder().with_modules(nodes)
+        self.recorder = RunRecorder()
+        self.last_run: dict = {"cache": None, "nodes": []}
+        builder = driver.Builder().with_modules(nodes).with_adapters(self.recorder)
         if lineage_sink is not None:
             builder = builder.with_adapters(
                 OpenLineageEmitter(lineage_sink, sql_dialect=self.sql_dialect)
@@ -63,6 +65,7 @@ class HamiltonFlow:
         )
 
     def _run(self, target: str, request: MetricFlowQueryRequest) -> Any:
+        self.recorder.reset()
         inputs = self._inputs(request)
         overrides: dict[str, Any] = {}
         key = None
@@ -78,18 +81,22 @@ class HamiltonFlow:
             hit = self.cache.get(key)
             if hit is not None:
                 overrides["compiled_sql"] = hit
+        cache_state = None if key is None else ("hit" if overrides else "miss")
         try:
             if key is not None and not overrides:
                 compiled = self.driver.execute(["compiled_sql"], inputs=inputs)
                 self.cache.put(key, compiled["compiled_sql"])
                 overrides["compiled_sql"] = compiled["compiled_sql"]
-            return self.driver.execute([target], inputs=inputs, overrides=overrides)[
+            result = self.driver.execute([target], inputs=inputs, overrides=overrides)[
                 target
             ]
+            return result
         except HamiltonFlowError:
             raise
         except _REQUEST_ERRORS as exc:
             raise RequestError(str(exc)) from exc
+        finally:
+            self.last_run = {"cache": cache_state, "nodes": list(self.recorder.nodes)}
 
     def explain(self, request: MetricFlowQueryRequest):
         return self._run("compiled_query", request)
@@ -116,6 +123,24 @@ class HamiltonFlow:
             "semantic_models": [m.name for m in manifest.semantic_models],
             "saved_queries": [q.name for q in manifest.saved_queries],
         }
+
+    def explorer_catalog(self) -> list[dict]:
+        """Metrics with the group-by names each can be queried by (for UIs)."""
+        engine = self.driver.execute(
+            ["metric_engine"],
+            inputs={"manifest_path": self.manifest_path, "sql_client": self.sql_client},
+        )["metric_engine"]
+        return [
+            {
+                "name": m.name,
+                "type": m.type.value,
+                "description": m.description,
+                "dimensions": [
+                    {"name": d.dunder_name, "type": d.type.value} for d in m.dimensions
+                ],
+            }
+            for m in engine.list_metrics()
+        ]
 
     def lineage(self) -> list[dict]:
         """Static node-level lineage: each node, its stage tag and its inputs."""
