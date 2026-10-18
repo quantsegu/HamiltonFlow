@@ -19,7 +19,13 @@ import sqlglot
 import yaml
 from sqlglot import exp
 
-from .base import Conversion, ConversionReport, node_relation, project_configuration, require_yaml
+from .base import (
+    Conversion,
+    ConversionReport,
+    node_relation,
+    project_configuration,
+    require_yaml,
+)
 
 OSSIE_VERSION = "0.2.0.dev0"
 _AGG = {exp.Sum: "sum", exp.Avg: "average", exp.Min: "min", exp.Max: "max"}

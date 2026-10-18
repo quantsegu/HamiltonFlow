@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from hamilton.function_modifiers import check_output_custom, tag
 from hamilton.data_quality.base import DataValidator, ValidationResult
+from hamilton.function_modifiers import check_output_custom, tag
 from metricflow.engine.metricflow_engine import (
     MetricFlowEngine,
     MetricFlowExplainResult,

@@ -4,6 +4,7 @@ from pathlib import Path
 import duckdb
 import pytest
 from fastapi.testclient import TestClient
+
 from hamilton_flow import HamiltonFlow, cli
 from hamilton_flow.client import DuckDBClient
 from hamilton_flow.server import Service, create_app, create_mcp

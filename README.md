@@ -1,112 +1,141 @@
 # HamiltonFlow
 
-Complete pinned MetricFlow source, with an executable Apache Hamilton integration.
-The upstream semantic parser, graph planner, optimizer, metric types and SQL
-renderers are retained. Hamilton orchestrates their execution; it does not
-approximate metric SQL with a replacement parser.
+MetricFlow semantic queries, orchestrated as an inspectable [Apache Hamilton](https://github.com/apache/hamilton)
+dataflow, with interchange (Ossie, LookML) and an agent-friendly serving layer.
 
-## What is copied
+MetricFlow (the upstream semantic parser, planner, optimizer and SQL renderers) is
+installed from PyPI as a pinned dependency (`metricflow==0.213.0`); nothing is
+forked or vendored. HamiltonFlow adds what MetricFlow alone does not:
 
-`vendor/metricflow/` contains every tracked file from upstream commit
-`e2f17cbb6563f1ed90450639e51588057da0ba4e`: engine, semantic interfaces,
-semantic graph, dbt integration package, documentation, fixtures and tests.
-It is a full source snapshot, not the upstream Git history. Upstream code is
-unmodified. `UPSTREAM.lock.json` records every file's SHA-256; run
-`python scripts/verify_sources.py` to verify the copy.
+| Capability | What you get |
+|---|---|
+| **Cached compilation** | Compiled SQL cached on *manifest content hash + request hash + dialect*; a hit skips parse, validate, plan and render (in memory or on disk). |
+| **Lineage** | Every DAG node carries a `stage` tag (`ingest, parse, validate, plan, render, execute, check`); `flow.lineage()` returns the graph; optional OpenLineage run events list the physical tables each query read. |
+| **Result checks** | Hamilton `@check_output_custom` validates the result shape before it is returned. |
+| **Structured errors** | `ManifestError`, `RequestError`, `WarehouseError` (+ `to_dict()`); Pydantic request validation with field-level messages. |
+| **Interchange** | Apache Ossie import/export, LookML import, each with an explicit report of what could not be converted. |
+| **Serving** | FastAPI app and MCP server exposing `catalog`, `explain`, `query`. |
 
-`hamilton_flow/` is the new integration. Upstream licenses, attribution and
-copyrights remain in place. This is an independent distribution, not an official
-dbt Labs or Apache release.
+## Support matrix
 
-## Install and run
+| Backend | Status | Evidence |
+|---|---|---|
+| DuckDB | **Supported** | Integration + property-based parity tests against direct MetricFlow on every CI run. |
+| ClickHouse | **Certified in CI (via SQLGlot bridge)** | Live parity tests vs DuckDB on a real ClickHouse server (`tests/live`). Not a native MetricFlow backend: SQL is translated from the DuckDB renderer, so unsupported constructs fail rather than fall back. |
+| Snowflake | Experimental | Native MetricFlow renderer; offline SQL tests only. No live run. |
+| Databricks | Experimental | Native MetricFlow renderer; offline SQL tests only. No live run. |
 
-Python 3.11 and Hatch are required (`pip install hatch` installs the build tool).
-The Hatch environment installs the **bundled** MetricFlow source and this library
-in a single dependency resolution. Do not install this root package alone from
-PyPI: the pinned upstream development version is supplied by the checkout.
+See [WAREHOUSES.md](WAREHOUSES.md) for connection configuration.
+Materialization (SQLMesh projects, run ledger) is **not** part of this package; see
+the warehouse doc for the retained helper and its limits.
+
+## Install
 
 ```sh
-hatch run python scripts/verify_sources.py
-hatch run python -c "import duckdb,pathlib; c=duckdb.connect('demo.duckdb'); c.execute(pathlib.Path('examples/setup.sql').read_text()); c.close()"
-hatch run python -m hamilton_flow.cli catalog --manifest examples/semantic
-hatch run python -m hamilton_flow.cli explain --manifest examples/semantic --request examples/query.json
-hatch run python -m hamilton_flow.cli query --manifest examples/semantic --database demo.duckdb --request examples/query.json
-hatch run test
+pip install -e .                 # Python 3.11+
+pip install -e '.[serve]'        # FastAPI / MCP server
+pip install -e '.[clickhouse]'   # or .[snowflake], .[databricks]
+pip install lkml                 # only for LookML import
 ```
 
-The sample returns CH revenue 150, 3 orders, average order value 50; DE revenue
-200, 1 order, average order value 200. The tests also execute derived metrics,
-cumulative metrics, filters, time bounds, native JSON manifest loading and replay.
-The setup SQL is for a new scratch database; it intentionally does not overwrite
-existing tables.
+## Quick start
 
-## Python API
+```sh
+python -c "import duckdb,pathlib; c=duckdb.connect('demo.duckdb'); c.execute(pathlib.Path('examples/setup.sql').read_text()); c.close()"
+hamilton-flow catalog --manifest examples/semantic
+hamilton-flow explain --manifest examples/semantic --request examples/query.json
+hamilton-flow query   --manifest examples/semantic --database demo.duckdb --request examples/query.json --cache .hf-cache
+```
+
+Failures print a JSON error to stderr and exit non-zero by kind
+(`2` request, `3` manifest, `4` warehouse, `5` result check).
 
 ```python
 import duckdb
-from metricflow.engine.metricflow_engine import MetricFlowQueryRequest
 from hamilton_flow import HamiltonFlow
 from hamilton_flow.client import DuckDBClient
+from hamilton_flow.requests import request_from_dict
 
-with duckdb.connect('demo.duckdb') as connection:
-    flow = HamiltonFlow('examples/semantic', DuckDBClient(connection))
-    request = MetricFlowQueryRequest.create(
-        metric_names=['revenue', 'average_order_value'],
-        group_by_names=['customer__country'],
-    )
-    sql = flow.explain(request).sql_statement.sql
-    result = flow.query(request)
-    print(result.rows)
+with duckdb.connect("demo.duckdb") as connection:
+    flow = HamiltonFlow("examples/semantic", DuckDBClient(connection),
+                        cache=".hf-cache", lineage_sink=print)
+    request = request_from_dict({"metric_names": ["revenue"], "group_by_names": ["customer__country"]})
+    result = flow.query(request)          # QueryResult: .columns .rows .sql .to_records()
 ```
 
-Pass native `MetricFlowQueryRequest` objects for the full upstream request API.
-The CLI accepts name-based JSON arguments and converts ISO time constraints.
-It consumes native MetricFlow YAML directories (the upstream standalone format)
-or a serialized `semantic_manifest.json`; it does not silently reinterpret a dbt
-project as standalone YAML. The full `dbt-metricflow` source is included for users
-who need its original dbt workflow and dependencies.
+Native `MetricFlowQueryRequest` objects are also accepted.
 
-The Hamilton graph is:
+## The DAG
 
 ```mermaid
 flowchart LR
-  M[Manifest path] --> V[Parse and validate native semantic manifest]
-  V --> E[MetricFlow engine]
-  C[SQL client] --> E
-  R[Native query request] --> Q[Compile query and dataflow plan]
-  E --> Q
-  Q --> X[Execute compiled SQL]
+  P[manifest_path] --> F[manifest_fingerprint]
+  P --> A[parsed_manifest] --> V[semantic_manifest]
+  V --> E[metric_engine]
+  C[sql_client] --> E
+  R[query_request] --> RF[request_fingerprint]
+  E --> Q[compiled_query]
+  R --> Q
+  Q --> S[compiled_sql: cache boundary]
+  F --> S
+  RF --> S
+  S --> X[raw_result]
   C --> X
+  X --> K[query_result: checked]
 ```
 
-`flow.driver` exposes the actual Hamilton graph. A caller owns the SQL connection;
-the adapter never closes a supplied connection. CLI queries open DuckDB read-only.
-Manifest definitions and filter expressions are trusted project code, as in the
-upstream engine. Separate sessions/connections are required for concurrent use.
+`compiled_query` is MetricFlow's own `explain()`, deliberately not re-implemented:
+dimension resolution, dataflow planning and rendering are one upstream call, so
+output stays identical to MetricFlow (asserted by property-based tests).
 
-## Coverage and limits
+## Interchange
 
-All upstream capabilities remain available in the copied source. The added client
-is tested against DuckDB; no cloud account or external warehouse was used. Other
-upstream clients can be passed to the Python API, but that is not evidence that
-every warehouse integration has been tested here.
+```sh
+hamilton-flow import-ossie  --input model.ossie.yaml --output converted/
+hamilton-flow export-ossie  --manifest examples/semantic --output model.ossie.yaml
+hamilton-flow import-lookml --input views/ --output converted/
+```
 
-See `TEST_REPORT.md` and machine-readable JUnit reports in `reports/` for actual
-executions, skips and any failures. Copied tests are not counted as tests run.
-The upstream dbt CLI, external warehouse suites, performance matrix and deployment
-services are separate from the added Hamilton interface.
+Each prints a `report` with `converted` and `unsupported` entries.
+
+* **Ossie (0.2.0.dev0)** - output is validated against the official JSON schema in tests.
+  Imports datasets, single-column keys, many-to-one relationships, fields, single-aggregate
+  metrics and ratios of two aggregates. Not converted: window-function metrics,
+  composite keys, query-backed sources, and metrics whose dataset has no time field
+  (MetricFlow needs an aggregation time dimension).
+* **LookML** - views, dimensions, time dimension groups, primary keys, simple measures
+  and many-to-one joins. Not converted: derived tables, liquid/templated SQL,
+  `type: number` measures and table calculations, filtered measures, one-to-many joins,
+  tier/bin dimensions, access filters.
+
+Converted projects need a physical `time_spine` table (the converter writes the
+`project_configuration`; default `main.time_spine`).
+
+## Serving
+
+```sh
+hamilton-flow serve --manifest examples/semantic --database demo.duckdb --transport http      # POST /query /explain, GET /catalog /lineage
+hamilton-flow serve --manifest examples/semantic --database demo.duckdb --transport mcp       # stdio MCP for agents
+```
+
+Requests are serialized (one session owns one SQL connection). There is no authentication:
+put it behind your own gateway and use a read-only database user. Manifest filter
+expressions are trusted project code, as in upstream MetricFlow.
+
+## Limits
+
+* Synchronous; one session per client. Create separate sessions for concurrency.
+* The `catalog`/`explain`/`query` surface is not a BI connector (no JDBC/ADBC).
+* Snowflake and Databricks are untested live. See the matrix.
 
 ## Development
 
-- `hatch run test`: integration tests against real DuckDB and direct MetricFlow.
-- `hatch run python scripts/run_upstream_tests.py`: upstream default suites,
-  executed separately because their pytest option registrations overlap.
-- `hatch run ruff check hamilton_flow tests`: integration lint.
-- `python scripts/verify_sources.py`: verify complete copied source content.
+```sh
+hatch run test                              # unit + integration (live tests skip)
+CLICKHOUSE_HOST=localhost hatch run test tests/live   # needs a ClickHouse server
+ruff check hamilton_flow tests
+```
 
-Edit integration code outside `vendor/`. Updating an upstream source requires an
-explicit revision update and a regenerated source lock, not an unrecorded patch.
-
-## Warehouse adapters
-
-See [WAREHOUSES.md](WAREHOUSES.md) for Databricks, Snowflake, and ClickHouse configuration, target placement, offline validation, and execution limitations.
+The upstream MetricFlow test-suite is not re-run here; HamiltonFlow's guarantee is
+parity with a direct MetricFlow call, tested on random requests.
+Independent project; not an official dbt Labs or Apache release.

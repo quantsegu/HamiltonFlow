@@ -28,7 +28,7 @@ class QueryRequest(BaseModel):
     def _iso(cls, value: Any) -> Any:
         if isinstance(value, str):
             try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return datetime.fromisoformat(value)
             except ValueError as exc:
                 raise ValueError(f"not an ISO-8601 timestamp: {value!r}") from exc
         return value

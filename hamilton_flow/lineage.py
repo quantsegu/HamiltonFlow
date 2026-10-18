@@ -11,9 +11,10 @@ from __future__ import annotations
 import json
 import urllib.request
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import sqlglot
 from hamilton.lifecycle import api as lc
@@ -38,7 +39,7 @@ def http_sink(url: str, timeout: float = 5.0) -> Sink:
             data=json.dumps(event, default=str).encode(),
             headers={"Content-Type": "application/json"},
         )
-        urllib.request.urlopen(request, timeout=timeout).read()  # noqa: S310
+        urllib.request.urlopen(request, timeout=timeout).read()
 
     return post
 
@@ -77,7 +78,7 @@ class OpenLineageEmitter(lc.GraphExecutionHook):
     def _event(self, kind: str, run_id: str, facets: dict, **extra: Any) -> dict:
         return {
             "eventType": kind,
-            "eventTime": datetime.now(timezone.utc).isoformat(),
+            "eventTime": datetime.now(UTC).isoformat(),
             "producer": PRODUCER,
             "schemaURL": SCHEMA,
             "run": {"runId": str(uuid.uuid5(uuid.NAMESPACE_URL, run_id)), "facets": facets},

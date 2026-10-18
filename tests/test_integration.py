@@ -3,16 +3,17 @@ from pathlib import Path
 
 import duckdb
 import pytest
-from hamilton_flow import HamiltonFlow
-from hamilton_flow.client import DuckDBClient
-from hamilton_flow.errors import RequestError
-from hamilton_flow.nodes import load_manifest as semantic_manifest
 from metricflow.engine.metricflow_engine import MetricFlowEngine, MetricFlowQueryRequest
 from metricflow_semantics.errors.error_classes import (
     InvalidQueryException,
     UnknownMetricError,
 )
 from metricflow_semantics.model.semantic_manifest_lookup import SemanticManifestLookup
+
+from hamilton_flow import HamiltonFlow
+from hamilton_flow.client import DuckDBClient
+from hamilton_flow.errors import RequestError
+from hamilton_flow.nodes import load_manifest as semantic_manifest
 
 EXAMPLES = Path(__file__).parents[1] / "examples"
 

@@ -26,7 +26,7 @@ packages = ["hamilton_flow"]
 [tool.hatch.envs.default]
 skip-install = true
 python = "3.11"
-dependencies = ["hamilton-flow[serve] @ {root:uri}", "pytest>=8,<9", "pytest-mock", "hypothesis", "ruff", "httpx"]
+dependencies = ["hamilton-flow[serve,clickhouse] @ {root:uri}", "pytest>=8,<9", "pytest-mock", "hypothesis", "ruff", "httpx", "jsonschema", "lkml"]
 
 [tool.hatch.envs.default.env-vars]
 HAMILTON_TELEMETRY_ENABLED = "false"

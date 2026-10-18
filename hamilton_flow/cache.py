@@ -35,8 +35,8 @@ class CompiledSqlCache:
             file = self.path / f"{key}.pkl"
             if file.exists():
                 try:
-                    value = pickle.loads(file.read_bytes())  # noqa: S301 - own cache dir
-                except Exception:
+                    value = pickle.loads(file.read_bytes())
+                except Exception:  # noqa: BLE001 - corrupt entry: treat as a miss
                     file.unlink(missing_ok=True)
                 else:
                     self._memory[key] = value

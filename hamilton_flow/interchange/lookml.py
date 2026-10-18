@@ -213,7 +213,6 @@ def from_lookml(source: str | Path, time_spine: str = "main.time_spine") -> Conv
                 report.skip("join", where, "sql_on is not a simple ${a.x} = ${b.y} equality")
                 continue
             sides = {match.group(1): match.group(2), match.group(3): match.group(4)}
-            names = {explore["name"]: base, join["name"]: target}
             fk = sides.get(explore["name"])
             pk = sides.get(join["name"])
             if fk is None or pk is None:

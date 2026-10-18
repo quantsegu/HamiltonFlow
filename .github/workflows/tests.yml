@@ -1,4 +1,4 @@
-name: Integration tests
+name: Tests
 on: [push, pull_request, workflow_dispatch]
 jobs:
   test:
@@ -8,10 +8,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install hatch
-      - run: hatch run test --junitxml=reports/ci-integration.xml
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - run: pip install -e '.[serve]' pytest hypothesis pytest-mock ruff httpx jsonschema lkml
+      - run: ruff check hamilton_flow tests
+      - run: python -m pytest tests -q --junitxml=ci-unit.xml
+  clickhouse:
+    runs-on: ubuntu-latest
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8
+        ports: ['8123:8123']
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8123/ping"
+          --health-interval 5s --health-retries 20
+    env:
+      CLICKHOUSE_HOST: localhost
+      CLICKHOUSE_PORT: '8123'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          name: test-reports
-          path: reports/ci-integration.xml
+          python-version: '3.11'
+      - run: pip install -e '.[clickhouse]' pytest hypothesis pytest-mock
+      - run: python -m pytest tests/live -q -rs

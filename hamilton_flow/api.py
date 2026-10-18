@@ -6,7 +6,6 @@ from typing import Any
 
 from hamilton import driver
 from metricflow.engine.metricflow_engine import (
-    MetricFlowEngine,
     MetricFlowQueryRequest,
 )
 from metricflow.protocols.sql_client import SqlClient
