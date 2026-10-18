@@ -9,7 +9,6 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install hatch
-      - run: python scripts/verify_sources.py
       - run: hatch run test --junitxml=reports/ci-integration.xml
       - uses: actions/upload-artifact@v4
         if: always()

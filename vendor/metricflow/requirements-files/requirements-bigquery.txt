@@ -1,2 +1,0 @@
-# SqlAlchemy BigQuery connector. Includes google-cloud-bigquery.
-sqlalchemy-bigquery>=1.9.0, <2.0.0

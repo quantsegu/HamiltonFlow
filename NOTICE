@@ -1,4 +1,3 @@
-HamiltonFlow is an independent integration and source distribution.
-Bundled upstream sources retain their original copyright notices and licenses.
-https://github.com/dbt-labs/metricflow at e2f17cbb6563f1ed90450639e51588057da0ba4e (vendor/metricflow)
+HamiltonFlow is an independent integration; it is not an official dbt Labs or Apache release.
+It depends on MetricFlow (https://github.com/dbt-labs/metricflow, Apache-2.0), installed from PyPI.
 No affiliation or endorsement by upstream projects is implied.

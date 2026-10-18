@@ -5,15 +5,17 @@ build-backend = "hatchling.build"
 [project]
 name = "hamilton-flow"
 version = "0.1.0"
-description = "Complete MetricFlow source distribution with Hamilton semantic-query orchestration"
+description = "MetricFlow semantic queries orchestrated as an Apache Hamilton dataflow"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-dependencies = ["sqlglot>=30.8,<31", "apache-hamilton>=1.90,<2", "duckdb>=1.5,<1.6", "metricflow==0.214.0.dev0"]
+dependencies = ["sqlglot>=30.8,<31", "apache-hamilton>=1.90,<2", "duckdb>=1.5,<1.6", "metricflow==0.213.0"]
 
 [project.optional-dependencies]
 databricks = ["databricks-sql-connector>=3,<5", "databricks-sdk>=0.40,<1"]
 snowflake = ["snowflake-connector-python>=3,<5"]
 clickhouse = ["clickhouse-connect>=0.8,<2"]
+serve = ["mcp>=1.2,<2", "fastapi>=0.115,<1", "uvicorn>=0.30"]
+lineage = ["openlineage-python>=1.20"]
 
 [project.scripts]
 hamilton-flow = "hamilton_flow.cli:main"
@@ -24,7 +26,7 @@ packages = ["hamilton_flow"]
 [tool.hatch.envs.default]
 skip-install = true
 python = "3.11"
-dependencies = ["hamilton-flow @ {root:uri}", "metricflow @ {root:uri}/vendor/metricflow", "pytest>=8,<9", "pytest-mock", "pytest-xdist", "hypothesis", "duckdb-engine>=0.13,<0.14", "sqlalchemy>=2,<2.1", "tomli", "varname", "graphviz", "termcolor", "click", "Pympler", "dulwich>=1.2,<2", "PyGithub>=2.9,<3", "ruff"]
+dependencies = ["hamilton-flow[serve] @ {root:uri}", "pytest>=8,<9", "pytest-mock", "hypothesis", "ruff", "httpx"]
 
 [tool.hatch.envs.default.env-vars]
 HAMILTON_TELEMETRY_ENABLED = "false"
