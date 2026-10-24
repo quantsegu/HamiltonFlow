@@ -1,0 +1,5 @@
+order_id,customer_id,ordered_at,amount,status
+1,10,2026-01-01,100.0,paid
+2,10,2026-01-02,50.0,paid
+3,20,2026-01-02,200.0,paid
+4,30,2026-01-03,0.0,cancelled

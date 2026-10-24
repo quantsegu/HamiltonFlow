@@ -124,6 +124,21 @@ Requests are serialized (one session owns one SQL connection). There is no authe
 put it behind your own gateway and use a read-only database user. Manifest filter
 expressions are trusted project code, as in upstream MetricFlow.
 
+### Builder UI: configure data, models and metrics
+
+```sh
+hamilton-flow serve --project my-project          # creates my-project/data.duckdb and my-project/model.{json,yaml}
+hamilton-flow serve --project my-project --manifest examples/semantic --database demo.duckdb   # seed from an existing manifest
+```
+
+Open `http://127.0.0.1:8000/`:
+
+1. **Data & models**: upload CSV / TSV / Parquet / JSON (max 50 MB) into the project's DuckDB, preview and drop tables, then *Model this table*. It drafts entities (`*_id` columns), dimensions (text, dates) and measures (numeric columns) that you can edit.
+2. **Metrics**: add *simple*, *ratio*, *derived* or *cumulative* metrics. Ratio and derived metrics take **other metrics as inputs**, including other ratio/derived metrics, so metrics stack (revenue -> average order value -> net AOV). Derived inputs support aliases and offset windows (e.g. growth vs prior month).
+3. Every edit is validated by MetricFlow as you type; **Save & apply** writes `model.json` (what the UI edits) and `model.yaml` (native MetricFlow YAML) and switches the Explorer to the new model. Invalid models are never saved.
+
+Builder endpoints are mounted only with `--project`, can modify the project database, and have no authentication: keep the default `127.0.0.1` binding. Table loading needs the DuckDB project database; for Snowflake/Databricks/ClickHouse use `--warehouse` and write the model in YAML or via the import commands.
+
 ## Limits
 
 * Synchronous; one session per client. Create separate sessions for concurrency.

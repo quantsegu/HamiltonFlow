@@ -12,17 +12,24 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from . import builder, sources
 from .api import HamiltonFlow
 from .errors import HamiltonFlowError, WarehouseError
 from .requests import request_from_dict
 
 UI_FILE = Path(__file__).parent / "ui" / "index.html"
+try:  # FastAPI is an optional extra; the annotation must resolve at module level
+    from fastapi import Request
+except ImportError:  # pragma: no cover
+    Request = None
+
 _STATUS = {"request": 422, "manifest": 500, "warehouse": 502, "result": 500}
 
 
 class Service:
-    def __init__(self, flow: HamiltonFlow, max_rows: int = 10_000) -> None:
+    def __init__(self, flow: HamiltonFlow, max_rows: int = 10_000, project: Path | None = None) -> None:
         self.flow = flow
+        self.project = project
         self.max_rows = max_rows
         self._lock = threading.Lock()
 
@@ -37,7 +44,12 @@ class Service:
         return self._guard(self.flow.catalog)
 
     def explorer_catalog(self) -> tuple[dict, int]:
-        return self._guard(lambda: {"metrics": self.flow.explorer_catalog()})
+        def run():
+            if self.project is not None and not (self.project / builder.YAML_FILE).exists():
+                return {"metrics": [], "empty": True}
+            return {"metrics": self.flow.explorer_catalog()}
+
+        return self._guard(run)
 
     def explain(self, request: dict[str, Any]) -> tuple[dict, int]:
         def run():
@@ -67,11 +79,12 @@ class Service:
         return self._guard(run)
 
 
-def create_app(flow: HamiltonFlow, max_rows: int = 10_000):
+def create_app(flow: HamiltonFlow, max_rows: int = 10_000, project: str | Path | None = None):
     from fastapi import FastAPI
     from fastapi.responses import HTMLResponse, JSONResponse
 
-    service = Service(flow, max_rows)
+    project = Path(project).resolve() if project is not None else None
+    service = Service(flow, max_rows, project)
     app = FastAPI(title="HamiltonFlow", version="0.2.0")
 
     def respond(pair):
@@ -102,11 +115,98 @@ def create_app(flow: HamiltonFlow, max_rows: int = 10_000):
     def lineage():
         return flow.lineage()
 
+    if project is not None:
+        _builder_routes(app, flow, service, project, respond)
+
     @app.get("/healthz")
     def healthz():
         return {"status": "ok"}
 
     return app
+
+
+def _builder_routes(app, flow, service, project, respond):
+    """Endpoints behind the Data / Metrics UI. Only mounted in --project mode."""
+
+    def conn():
+        return sources.connection_of(flow.sql_client)
+
+    def apply():
+        flow.manifest_path = str(project)
+
+    def state():
+        spec = builder.load_spec(project)
+        if not spec["semantic_models"] and not (project / builder.SPEC_FILE).exists() and (project / builder.YAML_FILE).exists():
+            spec = builder.spec_from_manifest(nodes_load(project))
+        issues = builder.check(spec)
+        yaml_text = ""
+        if not any(i["level"] == "error" for i in issues):
+            yaml_text = builder.to_yaml(builder.compile_documents(spec))
+        return {
+            "spec": spec,
+            "tables": sources.list_tables(conn()),
+            "issues": issues,
+            "yaml": yaml_text,
+            "options": {
+                "aggregations": builder.AGGREGATIONS,
+                "metric_types": builder.METRIC_TYPES,
+                "grains": builder.GRAINS,
+            },
+        }
+
+    def nodes_load(path):
+        from .nodes import load_manifest
+
+        return load_manifest(str(path))
+
+    @app.get("/builder/state")
+    def builder_state():
+        return respond(service._guard(state))
+
+    @app.post("/builder/check")
+    def builder_check(payload: dict):
+        def run():
+            spec = payload.get("spec", {})
+            issues = builder.check(spec)
+            ok = not any(i["level"] == "error" for i in issues)
+            return {"issues": issues, "yaml": builder.to_yaml(builder.compile_documents(spec)) if ok else ""}
+
+        return respond(service._guard(run))
+
+    @app.put("/builder/model")
+    def builder_save(payload: dict):
+        def run():
+            spec = payload.get("spec", {})
+            issues = builder.save(project, spec)
+            saved = not any(i["level"] == "error" for i in issues) and bool(spec.get("metrics"))
+            if saved:
+                sources.ensure_time_spine(conn())
+                apply()
+            return {"saved": saved, "issues": issues}
+
+        return respond(service._guard(run))
+
+    @app.post("/builder/suggest")
+    def builder_suggest(payload: dict):
+        def run():
+            table = payload.get("table", "")
+            schema, _, name = table.rpartition(".")
+            return sources.suggest(table, sources.describe(conn(), schema or "main", name))
+
+        return respond(service._guard(run))
+
+    @app.get("/builder/tables/{schema}/{name}")
+    def builder_table(schema: str, name: str):
+        return respond(service._guard(lambda: sources.sample(conn(), schema, name)))
+
+    @app.delete("/builder/tables/{schema}/{name}")
+    def builder_drop(schema: str, name: str):
+        return respond(service._guard(lambda: sources.drop_table(conn(), schema, name) or {"dropped": f"{schema}.{name}"}))
+
+    @app.post("/builder/upload")
+    async def builder_upload(request: Request, filename: str, table: str, replace: bool = False):
+        body = await request.body()
+        return respond(service._guard(lambda: sources.load_file(conn(), project, filename, body, table, replace)))
 
 
 def create_mcp(flow: HamiltonFlow, max_rows: int = 1000):
