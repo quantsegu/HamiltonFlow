@@ -65,7 +65,7 @@ def test_full_flow_upload_suggest_model_metrics_query(client):
 
 def test_invalid_model_is_not_saved(client):
     upload(client, "orders", CSV)
-    bad = {"semantic_models": [], "metrics": [{"name": "x", "type": "simple", "measure": "nope"}]}
+    bad = {"semantic_models": [], "metrics": [{"name": "xx", "type": "simple", "measure": "nope"}]}
     out = client.put("/builder/model", json={"spec": bad}).json()
     assert out["saved"] is False and out["issues"][0]["level"] == "error"
     assert client.get("/builder/state").json()["spec"]["metrics"] == []
@@ -91,3 +91,44 @@ def test_builder_routes_absent_without_project():
     with duckdb.connect() as c:
         app = create_app(HamiltonFlow("examples/semantic", DuckDBClient(c)))
     assert TestClient(app).get("/builder/state").status_code == 404
+
+
+def test_quick_metric_preview_and_reachable(client):
+    upload(client, "orders", CSV)
+    upload(client, "customers", CUSTOMERS)
+    spec = {"semantic_models": [], "metrics": []}
+    for table in ("orders", "customers"):
+        draft = client.post("/builder/suggest", json={"table": f"main.{table}"}).json()
+        spec["semantic_models"].append(draft["semantic_model"])
+    made = client.post("/builder/quick-metric", json={"spec": spec, "request": {
+        "table": "main.orders", "agg": "sum", "column": "amount", "name": "revenue",
+        "filter_rows": [{"dimension": "order__status", "op": "eq", "value": "paid"}]}}).json()
+    spec = made["spec"]
+    assert made["measure"] == "total_amount" and "'paid'" in spec["metrics"][0]["filter"]
+    names = {d["name"] for d in client.post("/builder/reachable", json={"spec": spec, "measure": "total_amount"}).json()["dimensions"]}
+    assert {"order__status", "customer__country"} <= names
+    prev = client.post("/builder/preview", json={"spec": spec, "metric": "revenue"}).json()
+    assert prev["rows"] == [{"revenue": 350.0}]
+    grouped = client.post("/builder/preview", json={"spec": spec, "metric": "revenue", "group_by": "customer__country"}).json()
+    assert {r["customer__country"]: r["revenue"] for r in grouped["rows"]} == {"CH": 150.0, "DE": 200.0}
+    assert any(d["name"] == "customer__country" for d in prev["dimensions"])
+    # nothing was saved by previewing
+    assert client.get("/builder/state").json()["spec"]["metrics"] == []
+
+
+def test_preview_reports_errors(client):
+    bad = client.post("/builder/preview", json={"spec": {"semantic_models": [], "metrics": [{"name": "xx", "type": "simple", "measure": "nope"}]}})
+    assert bad.status_code == 422 and "measure" in bad.json()["error"]["message"]
+
+
+def test_preview_returns_dimensions_even_when_query_is_invalid(client):
+    upload(client, "orders", CSV)
+    draft = client.post("/builder/suggest", json={"table": "main.orders"}).json()
+    spec = {"semantic_models": [draft["semantic_model"]], "metrics": [
+        {"name": "rows_n", "type": "simple", "measure": "orders_row_count"},
+        {"name": "rows_growth", "type": "derived", "expr": "(rows_n - prior) / prior", "inputs": [{"name": "rows_n"}, {"name": "rows_n", "alias": "prior", "offset_window": "1 day"}]},
+    ]}
+    out = client.post("/builder/preview", json={"spec": spec, "metric": "rows_growth"}).json()
+    assert "metric_time" in out["error"] and any(d["name"] == "metric_time__day" for d in out["dimensions"])
+    ok = client.post("/builder/preview", json={"spec": spec, "metric": "rows_growth", "group_by": "metric_time__day"}).json()
+    assert "error" not in ok and ok["columns"][0] == "metric_time__day"

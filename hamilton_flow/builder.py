@@ -18,7 +18,7 @@ import yaml
 from .errors import ManifestError, RequestError
 from .interchange.base import node_relation, project_configuration
 
-NAME = re.compile(r"^[a-z][a-z0-9_]*$")
+NAME = re.compile(r"^(?!.*__)[a-z][a-z0-9_]*[a-z0-9]$")
 TABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){0,2}$")
 AGGREGATIONS = ["sum", "count", "count_distinct", "average", "min", "max", "median", "sum_boolean"]
 METRIC_TYPES = ["simple", "ratio", "derived", "cumulative"]
@@ -37,7 +37,7 @@ def _fail(path: str, message: str) -> None:
 
 def _name(value: Any, path: str) -> str:
     if not isinstance(value, str) or not NAME.match(value):
-        _fail(path, "use lowercase letters, digits and underscores, starting with a letter")
+        _fail(path, "use at least 2 lowercase letters, digits or single underscores, starting with a letter and not ending in an underscore")
     return value
 
 
@@ -55,6 +55,7 @@ def compile_documents(spec: dict[str, Any], time_spine: str = "main.time_spine")
     """Validate structure and compile the spec to MetricFlow documents."""
     if not isinstance(spec, dict):
         _fail("spec", "must be an object")
+    apply_filter_rows(spec)
     seen: dict[str, str] = {}
 
     def unique(kind: str, name: str, path: str) -> None:
@@ -272,3 +273,141 @@ def spec_from_manifest(manifest) -> dict[str, Any]:
             continue
         metrics.append(item)
     return {"semantic_models": models, "metrics": metrics}
+
+
+# ---------------------------------------------------------------------------
+# Guided metric creation: filters, reachable dimensions, quick metrics
+# ---------------------------------------------------------------------------
+
+FILTER_OPS = {
+    "eq": "=", "ne": "!=", "gt": ">", "gte": ">=", "lt": "<", "lte": "<=",
+    "in": "IN", "contains": "LIKE", "null": "IS NULL", "notnull": "IS NOT NULL",
+}
+_QUALIFIED = re.compile(r"^[a-z][a-z0-9_]*(__[a-z][a-z0-9_]*)+$")
+_NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
+QUICK_AGGS = {"sum", "average", "min", "max", "median", "count", "count_distinct", "count_rows"}
+
+
+def _literal(value: str) -> str:
+    value = str(value).strip()
+    if _NUMBER.match(value) or value.lower() in ("true", "false"):
+        return value.lower()
+    return "'" + value.replace("'", "''") + "'"
+
+
+def render_filter(rows: list[dict[str, str]]) -> str:
+    """Turn UI filter rows into a MetricFlow where-clause (AND-joined)."""
+    parts = []
+    for i, row in enumerate(rows or []):
+        dim, op = row.get("dimension", ""), row.get("op", "eq")
+        if not _QUALIFIED.match(dim or ""):
+            _fail(f"filter[{i}].dimension", "pick a dimension")
+        if op not in FILTER_OPS:
+            _fail(f"filter[{i}].op", f"one of {sorted(FILTER_OPS)}")
+        left = "{{ Dimension('" + dim + "') }}"
+        value = row.get("value", "")
+        if op in ("null", "notnull"):
+            parts.append(f"{left} {FILTER_OPS[op]}")
+            continue
+        if str(value).strip() == "":
+            _fail(f"filter[{i}].value", "enter a value")
+        if op == "in":
+            items = [v for v in (s.strip() for s in str(value).split(",")) if v]
+            parts.append(f"{left} IN ({', '.join(_literal(v) for v in items)})")
+        elif op == "contains":
+            parts.append(f"{left} LIKE {_literal('%' + str(value).strip() + '%')}")
+        else:
+            parts.append(f"{left} {FILTER_OPS[op]} {_literal(value)}")
+    return " AND ".join(parts)
+
+
+def _entity_prefix(sm: dict[str, Any]) -> str:
+    primary = next((e["name"] for e in sm.get("entities", []) if e.get("type") == "primary"), None)
+    return primary or sm.get("primary_entity") or sm["name"]
+
+
+def reachable_dimensions(spec: dict[str, Any], model_name: str) -> list[dict[str, str]]:
+    """Dimensions usable in a filter on a measure of ``model_name``, with their qualified names."""
+    models = {m["name"]: m for m in spec.get("semantic_models", [])}
+    if model_name not in models:
+        return []
+    home = models[model_name]
+    out = [
+        {"name": f"{_entity_prefix(home)}__{d['name']}", "label": d["name"], "type": d.get("type", "categorical"), "model": model_name}
+        for d in home.get("dimensions", []) if d.get("name")
+    ]
+    for entity in home.get("entities", []):
+        if entity.get("type") != "foreign":
+            continue
+        for other in models.values():
+            if other["name"] != model_name and any(
+                e.get("type") == "primary" and e["name"] == entity["name"] for e in other.get("entities", [])
+            ):
+                out += [
+                    {"name": f"{entity['name']}__{d['name']}", "label": f"{entity['name']} → {d['name']}", "type": d.get("type", "categorical"), "model": other["name"]}
+                    for d in other.get("dimensions", []) if d.get("name")
+                ]
+    return out
+
+
+def quick_metric(spec: dict[str, Any], columns: list[dict[str, str]], request: dict[str, Any]) -> dict[str, Any]:
+    """Add a simple metric from 'aggregate this column', creating model/measure as needed.
+
+    ``columns`` describes the table's columns (needed only to draft a model).
+    Returns {"spec", "metric", "measure", "model_created"}; the input spec is not mutated.
+    """
+    import copy
+
+    from .sources import suggest
+
+    spec = copy.deepcopy(spec)
+    table, agg = request.get("table", ""), request.get("agg", "")
+    if agg not in QUICK_AGGS:
+        _fail("agg", f"one of {sorted(QUICK_AGGS)}")
+    column = request.get("column", "")
+    if agg != "count_rows" and column not in {c["name"] for c in columns}:
+        _fail("column", "pick a column of the table")
+    name = _name(request.get("name"), "name")
+    if any(m.get("name") == name for m in spec.get("metrics", [])):
+        _fail("name", f"a metric called {name!r} already exists")
+    model = next((m for m in spec.get("semantic_models", []) if m.get("table") == table), None)
+    created = model is None
+    if created:
+        model = suggest(table, columns)["semantic_model"]
+        model.pop("measures", None)
+        used = {m["name"] for m in spec.get("semantic_models", [])}
+        if model["name"] in used:
+            model["name"] += "_model"
+        spec.setdefault("semantic_models", []).append(model)
+    time_dims = [d["name"] for d in model.get("dimensions", []) if d.get("type") == "time"]
+    if not time_dims:
+        _fail("table", f"{table} has no date or timestamp column; MetricFlow needs one to aggregate measures over time")
+    model.setdefault("agg_time_dimension", time_dims[0])
+    if agg == "count_rows":
+        measure, expr, mfagg = f"{model['name']}_rows", "1", "sum"
+    else:
+        measure, expr, mfagg = f"{agg}_{column.lower()}", column, agg
+    existing = next((x for x in model.setdefault("measures", []) if x.get("agg") == mfagg and x.get("expr") == expr), None)
+    if existing:
+        measure = existing["name"]
+    else:
+        taken = {x["name"] for m in spec["semantic_models"] for x in m.get("measures", [])}
+        base, n = measure, 2
+        while measure in taken:
+            measure, n = f"{base}_{n}", n + 1
+        model["measures"].append({"name": measure, "agg": mfagg, "expr": expr})
+    rows = request.get("filter_rows") or []
+    metric = {"name": name, "type": "simple", "measure": measure, "description": request.get("description", "")}
+    if rows:
+        metric["filter_rows"] = rows
+        metric["filter"] = render_filter(rows)
+    spec.setdefault("metrics", []).append(metric)
+    return {"spec": spec, "metric": name, "measure": measure, "model_created": created}
+
+
+def apply_filter_rows(spec: dict[str, Any]) -> dict[str, Any]:
+    """Regenerate ``filter`` text for metrics edited through the filter builder."""
+    for m in spec.get("metrics", []):
+        if m.get("filter_rows"):
+            m["filter"] = render_filter(m["filter_rows"])
+    return spec

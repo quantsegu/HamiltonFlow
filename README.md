@@ -134,7 +134,10 @@ hamilton-flow serve --project my-project --manifest examples/semantic --database
 Open `http://127.0.0.1:8000/`:
 
 1. **Data & models**: upload CSV / TSV / Parquet / JSON (max 50 MB) into the project's DuckDB, preview and drop tables, then *Model this table*. It drafts entities (`*_id` columns), dimensions (text, dates) and measures (numeric columns) that you can edit.
-2. **Metrics**: add *simple*, *ratio*, *derived* or *cumulative* metrics. Ratio and derived metrics take **other metrics as inputs**, including other ratio/derived metrics, so metrics stack (revenue -> average order value -> net AOV). Derived inputs support aliases and offset windows (e.g. growth vs prior month).
+2. **Metrics**: a guided composer. Click *New metric* and pick what you want in plain language:
+   - *Aggregate a column* (total, average, min, max, median, unique count) and *Count rows*: choose a table and column from dropdowns; the model and measure are created for you. Add conditions ("status is paid") with a filter builder instead of writing expressions.
+   - *Ratio of two metrics*, *Formula* (click metric and operator chips), *Growth vs previous period* and *Running total* (all-time, YTD, MTD or rolling window). Ratio, formula and growth metrics take **other metrics as inputs**, including other ratio/formula metrics, so metrics stack (revenue -> average order value -> net AOV). The editor shows "Built on", "Used by" and a "How it is built" tree; renaming a metric updates the metrics that use it.
+   - A **live preview** runs the metric on your data as you edit (single number, or grouped by any reachable dimension; period-comparison metrics are grouped by time automatically). It never saves anything.
 3. Every edit is validated by MetricFlow as you type; **Save & apply** writes `model.json` (what the UI edits) and `model.yaml` (native MetricFlow YAML) and switches the Explorer to the new model. Invalid models are never saved.
 
 Builder endpoints are mounted only with `--project`, can modify the project database, and have no authentication: keep the default `127.0.0.1` binding. Table loading needs the DuckDB project database; for Snowflake/Databricks/ClickHouse use `--warehouse` and write the model in YAML or via the import commands.

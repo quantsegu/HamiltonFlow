@@ -99,3 +99,12 @@ def test_run_info_reports_cache_and_node_timings(flow):
     assert {"parsed_manifest", "compiled_query", "raw_result"} <= ran_first
     assert "compiled_query" not in ran_second and "raw_result" in ran_second
     assert all(n["ms"] >= 0 for n in first["nodes"])
+
+
+def test_query_with_dates_is_json_serializable(flow):
+    body = client_post(flow, {"metric_names": ["revenue"], "group_by_names": ["metric_time__day"], "order_by_names": ["metric_time__day"]})
+    assert body["rows"][0]["metric_time__day"].startswith("2026-01-01")
+
+
+def client_post(flow, payload):
+    return TestClient(create_app(flow)).post("/query", json=payload).json()

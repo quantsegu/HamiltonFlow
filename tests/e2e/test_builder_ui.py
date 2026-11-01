@@ -35,7 +35,11 @@ def server(tmp_path):
     proc.terminate()
 
 
-def test_build_model_and_stack_metrics(server):
+def kpi(page):
+    return page.inner_text("#pvbody .kpi")
+
+
+def test_compose_metrics_with_wizard_and_stack_them(server):
     with playwright.sync_playwright() as p:
         browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
         page, errors = browser.new_page(), []
@@ -46,19 +50,71 @@ def test_build_model_and_stack_metrics(server):
             page.fill("#tname", name)
             page.set_input_files("#file", str(DATA / f"{name}.csv"))
             page.wait_for_selector(f"text=Loaded main.{name}")
-        page.click('[data-act=model][data-t="main.orders"]')
-        page.click('[data-act=model][data-t="main.customers"]')
+        page.click('[data-act=model][data-t="main.customers"]')  # joins orders to customers via customer_id
         page.click("[data-view=metrics]")
-        n = page.locator("#view-metrics .card h3 .badge:text-is('simple')").count()
-        page.click("[data-act=newmetric][data-type=ratio]")
-        page.fill(f'[data-p="metrics.{n}.name"]', "avg_order_value")
-        page.select_option(f'[data-p="metrics.{n}.numerator"]', "amount")
-        page.select_option(f'[data-p="metrics.{n}.denominator"]', "orders_count")
-        page.click("[data-act=newmetric][data-type=derived]")
-        page.fill(f'[data-p="metrics.{n + 1}.name"]', "aov_net")
-        page.fill(f'[data-p="metrics.{n + 1}.expr"]', "avg_order_value * 0.9")
-        page.select_option(f'[data-p="metrics.{n + 1}.inputs.0.name"]', "avg_order_value")
-        page.wait_for_function("document.querySelector('#bar-status').innerText.includes('valid')")
+        page.wait_for_selector(".tiles, .mitem")
+
+        # 1. aggregate a column, with a filter built from dropdowns
+        page.click("[data-act=wiz-open][data-kind=agg]")
+        page.select_option("[data-w=table]", "main.orders")
+        page.select_option("[data-w=column]", "amount")
+        page.fill("[data-w=name]", "paid_revenue")
+        page.click("[data-fadd=wf]")
+        page.wait_for_selector('[data-f=wf][data-k=dimension] option[value="order__status"]', state="attached")
+        page.select_option("[data-f=wf][data-k=dimension]", "order__status")
+        page.fill("[data-f=wf][data-k=value]", "cancelled")
+        page.click("[data-act=wiz-create]")
+        page.wait_for_selector("#pvbody .kpi")
+        page.wait_for_function("document.querySelector('#pvbody .kpi').innerText==='0'")  # cancelled order amount is 0
+
+        # 2. count rows, 3. ratio, 4. formula on the ratio
+        page.click("[data-act=wiz-open]")
+        page.click("[data-act=wiz-kind][data-kind=count]")
+        page.select_option("[data-w=table]", "main.orders")
+        page.fill("[data-w=name]", "order_total")
+        page.click("[data-act=wiz-create]")
+        page.wait_for_function("document.querySelector('#pvbody .kpi')?.innerText==='4'")
+
+        page.click("[data-act=wiz-open]")
+        page.click("[data-act=wiz-kind][data-kind=agg]")
+        page.select_option("[data-w=table]", "main.orders")
+        page.select_option("[data-w=column]", "amount")
+        page.fill("[data-w=name]", "revenue")
+        page.click("[data-act=wiz-create]")
+        page.wait_for_function("document.querySelector('#pvbody .kpi')?.innerText==='350'")
+
+        page.click("[data-act=wiz-open]")
+        page.click("[data-act=wiz-kind][data-kind=ratio]")
+        page.select_option("[data-w=numerator]", "revenue")
+        page.select_option("[data-w=denominator]", "order_total")
+        page.fill("[data-w=name]", "aov")
+        page.click("[data-act=wiz-create]")
+        page.wait_for_function("document.querySelector('#pvbody .kpi')?.innerText.startsWith('87.5')")
+
+        page.click("[data-act=wiz-open]")
+        page.click("[data-act=wiz-kind][data-kind=formula]")
+        page.click("[data-ins=fx-w][data-v=aov]")
+        page.click("[data-ins=fx-w][data-v='*']")
+        page.type("#fx-w", " 0.9")
+        page.fill("[data-w=name]", "aov_net")
+        page.click("[data-act=wiz-create]")
+        page.wait_for_function("document.querySelector('#pvbody .kpi')?.innerText==='78.75'")
+
+        # 5. growth needs a time grouping; the preview picks one itself
+        page.click("[data-act=wiz-open]")
+        page.click("[data-act=wiz-kind][data-kind=growth]")
+        page.select_option("[data-w=base]", "order_total")
+        page.select_option("[data-w=period]", "day")
+        page.fill("[data-w=name]", "order_growth")
+        page.click("[data-act=wiz-create]")
+        page.wait_for_selector("#pvbody table")
+        assert "-0.5" in page.inner_text("#pvbody table")
+
+        # invalid names are rejected before saving
+        page.fill("#mname", "Bad Name")
+        page.dispatch_event("#mname", "change")
+        assert "lowercase" in page.inner_text("#mname-err")
+
         page.click("#save")
         page.wait_for_function("document.querySelector('#bar-status').innerText.includes('Saved')")
         page.click("[data-view=explore]")
@@ -68,5 +124,5 @@ def test_build_model_and_stack_metrics(server):
         page.click("#run")
         page.wait_for_selector("table")
         text = page.inner_text("table")
-        assert "45" in text and "180" in text and not errors
+        assert "45" in text and "180" in text and not [e for e in errors if "favicon" not in e]
         browser.close()
