@@ -12,17 +12,24 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from . import builder, sources
 from .api import HamiltonFlow
-from .errors import HamiltonFlowError, WarehouseError
+from .errors import HamiltonFlowError, RequestError, WarehouseError
 from .requests import request_from_dict
 
 UI_FILE = Path(__file__).parent / "ui" / "index.html"
+try:  # FastAPI is an optional extra; the annotation must resolve at module level
+    from fastapi import Request
+except ImportError:  # pragma: no cover
+    Request = None
+
 _STATUS = {"request": 422, "manifest": 500, "warehouse": 502, "result": 500}
 
 
 class Service:
-    def __init__(self, flow: HamiltonFlow, max_rows: int = 10_000) -> None:
+    def __init__(self, flow: HamiltonFlow, max_rows: int = 10_000, project: Path | None = None) -> None:
         self.flow = flow
+        self.project = project
         self.max_rows = max_rows
         self._lock = threading.Lock()
 
@@ -37,7 +44,12 @@ class Service:
         return self._guard(self.flow.catalog)
 
     def explorer_catalog(self) -> tuple[dict, int]:
-        return self._guard(lambda: {"metrics": self.flow.explorer_catalog()})
+        def run():
+            if self.project is not None and not (self.project / builder.YAML_FILE).exists():
+                return {"metrics": [], "empty": True}
+            return {"metrics": self.flow.explorer_catalog()}
+
+        return self._guard(run)
 
     def explain(self, request: dict[str, Any]) -> tuple[dict, int]:
         def run():
@@ -67,16 +79,18 @@ class Service:
         return self._guard(run)
 
 
-def create_app(flow: HamiltonFlow, max_rows: int = 10_000):
+def create_app(flow: HamiltonFlow, max_rows: int = 10_000, project: str | Path | None = None):
     from fastapi import FastAPI
+    from fastapi.encoders import jsonable_encoder
     from fastapi.responses import HTMLResponse, JSONResponse
 
-    service = Service(flow, max_rows)
+    project = Path(project).resolve() if project is not None else None
+    service = Service(flow, max_rows, project)
     app = FastAPI(title="HamiltonFlow", version="0.2.0")
 
     def respond(pair):
         body, status = pair
-        return JSONResponse(body, status_code=status)
+        return JSONResponse(jsonable_encoder(body), status_code=status)
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     def ui():
@@ -102,11 +116,166 @@ def create_app(flow: HamiltonFlow, max_rows: int = 10_000):
     def lineage():
         return flow.lineage()
 
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+
+    @app.get("/ui/{name}", include_in_schema=False)
+    def ui_asset(name: str):
+        path = UI_FILE.parent / name
+        if name not in {"common.js", "builder.js", "composer.js"} or not path.exists():
+            raise HTTPException(404)
+        return FileResponse(path, media_type="text/javascript", headers={"Cache-Control": "no-cache"})
+
+    if project is not None:
+        _builder_routes(app, flow, service, project, respond)
+
     @app.get("/healthz")
     def healthz():
         return {"status": "ok"}
 
     return app
+
+
+def _builder_routes(app, flow, service, project, respond):
+    """Endpoints behind the Data / Metrics UI. Only mounted in --project mode."""
+
+    def conn():
+        return sources.connection_of(flow.sql_client)
+
+    def apply():
+        flow.manifest_path = str(project)
+
+    def state():
+        spec = builder.load_spec(project)
+        if not spec["semantic_models"] and not (project / builder.SPEC_FILE).exists() and (project / builder.YAML_FILE).exists():
+            spec = builder.spec_from_manifest(nodes_load(project))
+        issues = builder.check(spec)
+        yaml_text = ""
+        if not any(i["level"] == "error" for i in issues):
+            yaml_text = builder.to_yaml(builder.compile_documents(spec))
+        return {
+            "spec": spec,
+            "tables": sources.list_tables(conn()),
+            "issues": issues,
+            "yaml": yaml_text,
+            "options": {
+                "aggregations": builder.AGGREGATIONS,
+                "metric_types": builder.METRIC_TYPES,
+                "grains": builder.GRAINS,
+            },
+        }
+
+    def nodes_load(path):
+        from .nodes import load_manifest
+
+        return load_manifest(str(path))
+
+    @app.get("/builder/state")
+    def builder_state():
+        return respond(service._guard(state))
+
+    @app.post("/builder/check")
+    def builder_check(payload: dict):
+        def run():
+            spec = payload.get("spec", {})
+            issues = builder.check(spec)
+            ok = not any(i["level"] == "error" for i in issues)
+            return {"issues": issues, "yaml": builder.to_yaml(builder.compile_documents(spec)) if ok else ""}
+
+        return respond(service._guard(run))
+
+    @app.put("/builder/model")
+    def builder_save(payload: dict):
+        def run():
+            spec = payload.get("spec", {})
+            issues = builder.save(project, spec)
+            saved = not any(i["level"] == "error" for i in issues) and bool(spec.get("metrics"))
+            if saved:
+                sources.ensure_time_spine(conn())
+                apply()
+            return {"saved": saved, "issues": issues}
+
+        return respond(service._guard(run))
+
+    @app.post("/builder/quick-metric")
+    def builder_quick_metric(payload: dict):
+        def run():
+            request = payload.get("request", {})
+            table = request.get("table", "")
+            schema, _, name = table.rpartition(".")
+            columns = sources.describe(conn(), schema or "main", name)
+            return builder.quick_metric(payload.get("spec", {}), columns, request)
+
+        return respond(service._guard(run))
+
+    @app.post("/builder/reachable")
+    def builder_reachable(payload: dict):
+        def run():
+            spec, measure = payload.get("spec", {}), payload.get("measure", "")
+            if payload.get("model"):
+                return {"dimensions": builder.reachable_dimensions(spec, payload["model"])}
+            owner = next(
+                (m["name"] for m in spec.get("semantic_models", []) if any(x.get("name") == measure for x in m.get("measures", []))),
+                None,
+            )
+            return {"dimensions": builder.reachable_dimensions(spec, owner) if owner else []}
+
+        return respond(service._guard(run))
+
+    @app.post("/builder/preview")
+    def builder_preview(payload: dict):
+        def run():
+            import tempfile
+
+            spec = builder.apply_filter_rows(payload.get("spec", {}))
+            documents = builder.compile_documents(spec)
+            metric = payload.get("metric")
+            names = [metric] if metric else [m["name"] for m in spec.get("metrics", [])][:1]
+            sources.ensure_time_spine(conn())
+            with tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / builder.YAML_FILE).write_text(builder.to_yaml(documents))
+                draft = HamiltonFlow(tmp, flow.sql_client)
+                catalog = {m["name"]: m for m in draft.explorer_catalog()}
+                dimensions = catalog.get(names[0], {}).get("dimensions", []) if names else []
+                request = {"metric_names": names, "limit": min(int(payload.get("limit", 50)), 200)}
+                if payload.get("group_by"):
+                    request["group_by_names"] = [payload["group_by"]]
+                    request["order_by_names"] = [payload["group_by"]]
+                try:
+                    result = draft.query(request_from_dict(request))
+                except RequestError as exc:
+                    return {"error": exc.message, "dimensions": dimensions, "columns": [], "rows": [], "sql": ""}
+            records = result.to_records()
+            return {
+                "columns": list(result.columns),
+                "rows": records,
+                "sql": result.sql,
+                "dimensions": dimensions,
+            }
+
+        return respond(service._guard(run))
+
+    @app.post("/builder/suggest")
+    def builder_suggest(payload: dict):
+        def run():
+            table = payload.get("table", "")
+            schema, _, name = table.rpartition(".")
+            return sources.suggest(table, sources.describe(conn(), schema or "main", name))
+
+        return respond(service._guard(run))
+
+    @app.get("/builder/tables/{schema}/{name}")
+    def builder_table(schema: str, name: str):
+        return respond(service._guard(lambda: sources.sample(conn(), schema, name)))
+
+    @app.delete("/builder/tables/{schema}/{name}")
+    def builder_drop(schema: str, name: str):
+        return respond(service._guard(lambda: sources.drop_table(conn(), schema, name) or {"dropped": f"{schema}.{name}"}))
+
+    @app.post("/builder/upload")
+    async def builder_upload(request: Request, filename: str, table: str, replace: bool = False):
+        body = await request.body()
+        return respond(service._guard(lambda: sources.load_file(conn(), project, filename, body, table, replace)))
 
 
 def create_mcp(flow: HamiltonFlow, max_rows: int = 1000):

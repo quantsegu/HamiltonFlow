@@ -29,6 +29,7 @@ def parse_args(argv=None):
     )
     parser.add_argument("command", choices=QUERY_COMMANDS + INTERCHANGE)
     parser.add_argument("--manifest", help="MetricFlow YAML dir or manifest JSON")
+    parser.add_argument("--project", help="Builder project directory (DuckDB data + model); enables the Data/Metrics UI")
     parser.add_argument("--input", help="Ossie/LookML file or directory (import commands)")
     parser.add_argument("--database", default=":memory:")
     parser.add_argument("--warehouse", help="JSON warehouse connection configuration")
@@ -58,13 +59,29 @@ def run_interchange(args) -> dict:
     return {"written": str(args.output), "report": conversion.report.to_dict()}
 
 
+def prepare_project(args) -> None:
+    """Point the session at a project dir with its own writable DuckDB file."""
+    from . import builder
+    from .nodes import load_manifest
+
+    project = Path(args.project)
+    project.mkdir(parents=True, exist_ok=True)
+    if args.manifest and not (project / builder.SPEC_FILE).exists():
+        builder.save(project, builder.spec_from_manifest(load_manifest(args.manifest)))
+    args.manifest = str(project)
+    if not args.warehouse and args.database == ":memory:":
+        args.database = str(project / "data.duckdb")
+
+
 def open_session(args, stack: ExitStack):
     if args.warehouse:
         client = WarehouseClient(json.loads(Path(args.warehouse).read_text()))
         stack.callback(client.close)
     else:
         connection = stack.enter_context(
-            duckdb.connect(args.database, read_only=args.database != ":memory:")
+            duckdb.connect(
+                args.database, read_only=args.database != ":memory:" and not args.project
+            )
         )
         client = DuckDBClient(connection)
     sink = None
@@ -80,8 +97,10 @@ def open_session(args, stack: ExitStack):
 def run(args) -> dict | None:
     if args.command in INTERCHANGE:
         return run_interchange(args)
+    if args.project:
+        prepare_project(args)
     if not args.manifest:
-        raise SystemExit("--manifest is required")
+        raise SystemExit("--manifest or --project is required")
     with ExitStack() as stack:
         client, session = open_session(args, stack)
         if args.command == "serve":
@@ -98,12 +117,15 @@ def run(args) -> dict | None:
 
 
 def serve(args, session) -> None:
-    from . import server
+    from . import server, sources
+
+    if args.project:
+        sources.ensure_time_spine(sources.connection_of(session.sql_client))
 
     if args.transport == "http":
         import uvicorn
 
-        uvicorn.run(server.create_app(session), host=args.host, port=args.port)
+        uvicorn.run(server.create_app(session, project=args.project), host=args.host, port=args.port)
     else:
         mcp = server.create_mcp(session)
         if args.transport == "mcp":

@@ -22,7 +22,7 @@ h2:first-child{margin-top:0}
 label.item{display:flex;gap:8px;align-items:flex-start;padding:4px 0;cursor:pointer}
 .badge{font-size:11px;padding:1px 6px;border-radius:9px;background:var(--chip);color:var(--accent);white-space:nowrap}
 .muted{color:var(--mute)}
-input[type=text],input[type=number],input[type=datetime-local],textarea,select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+input:not([type]),input[type=text],input[type=number],input[type=datetime-local],textarea,select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
 textarea{min-height:56px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
 .row{display:flex;gap:8px}.row>*{flex:1}
 button{font:inherit;padding:7px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
@@ -53,14 +53,58 @@ pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;paddi
 .chip{display:inline-flex;gap:4px;align-items:center;background:var(--chip);color:var(--accent);padding:2px 8px;border-radius:12px;font-size:12px}
 .pill{padding:2px 8px;border-radius:12px;font-size:12px;border:1px solid var(--line)}
 .pill.hit{color:var(--ok);border-color:var(--ok)}.pill.miss{color:var(--warn);border-color:var(--warn)}
+
+nav{display:flex;gap:2px}
+nav button{border:0;background:none;padding:6px 12px;border-radius:6px;color:var(--mute);cursor:pointer}
+nav button.on{background:var(--chip);color:var(--accent)}
+[hidden]{display:none!important}
+.builder{max-width:1100px;margin:0 auto;padding:16px 16px 120px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:14px;display:flex;gap:8px;align-items:center}
+.grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.f{display:flex;flex-direction:column;gap:3px}.f>span{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.line{display:grid;gap:6px;grid-template-columns:1.2fr 1fr 1.4fr 32px;margin-bottom:6px;align-items:center}
+.line.dim{grid-template-columns:1.2fr 1fr 1fr 1.4fr 32px}
+.line.inp{grid-template-columns:1.4fr 1fr 1fr 32px}
+button.sm{padding:3px 9px;font-size:12px}
+button.x{padding:2px 8px;color:var(--err)}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:16px;text-align:center;color:var(--mute)}
+.drop.over{border-color:var(--accent);color:var(--accent)}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 16px;z-index:5}
+.savebar .in{max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.issue{color:var(--err)}.issue.info{color:var(--mute)}.ok{color:var(--ok)}
+.tree{font-size:12px;color:var(--mute)}
+.two{display:grid;gap:14px;grid-template-columns:minmax(260px,340px) 1fr}
+@media(max-width:800px){.two{grid-template-columns:1fr}.line,.line.dim,.line.inp{grid-template-columns:1fr 1fr}}
+code.k{background:var(--bg);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+
+.composer{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
+@media(max-width:800px){.composer{grid-template-columns:1fr}}
+.mlist{position:sticky;top:12px}
+.mitem{display:flex;gap:6px;align-items:center;padding:7px 9px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.mitem:hover{background:var(--chip)}.mitem.on{background:var(--chip);border-color:var(--accent)}
+.mitem b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.mmain{min-width:0}
+.tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.tile{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:12px;border-radius:8px;height:100%}
+.tile:hover{border-color:var(--accent)}
+.ico{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;background:var(--chip);color:var(--accent);font-weight:700}
+.ico.sm{width:24px;height:24px;font-size:13px}
+.chipbtn{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:2px 10px;font-size:12.5px;cursor:pointer}
+.chipbtn:hover{border-color:var(--accent);color:var(--accent)}
+.chipbtn.op{font-weight:700;min-width:30px}
+.line.fil{grid-template-columns:1.6fr 1fr 1.4fr 32px}
+.kpi{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0}
+ul.tr{margin:4px 0 0;padding-left:16px;list-style:none;border-left:1px solid var(--line)}
+details>summary{outline:none}
 </style>
 </head>
 <body>
 <header>
-  <h1>HamiltonFlow Explorer</h1><span class="muted" id="summary"></span><span class="sp"></span>
+  <h1>HamiltonFlow Explorer</h1><span class="muted" id="summary"></span><nav id="nav"><button data-view="explore" class="on">Explore</button><button data-view="data" hidden>Data &amp; models</button><button data-view="metrics" hidden>Metrics</button></nav><span class="sp"></span>
   <button id="theme" title="Toggle theme">Theme</button>
 </header>
-<div class="app">
+<div class="app" id="view-explore">
 <aside>
   <h2>Metrics</h2><div id="metrics" class="muted">Loading…</div>
   <h2>Group by</h2><div id="dims" class="muted">Select a metric</div>
@@ -78,17 +122,19 @@ pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;paddi
   <div id="view"></div>
 </main>
 </div>
+<section id="view-data" class="builder" hidden></section>
+<section id="view-metrics" class="builder" hidden></section>
+<div class="savebar" id="bar" hidden><div class="in">
+  <span id="bar-status"></span><span class="sp" style="flex:1"></span>
+  <button id="show-yaml" class="sm">View YAML</button>
+  <button id="save" class="primary">Save &amp; apply</button>
+</div><pre id="yaml" hidden style="max-width:1100px;margin:10px auto 0;max-height:220px"></pre></div>
+<script src="/ui/common.js"></script>
+<script src="/ui/builder.js"></script>
+<script src="/ui/composer.js"></script>
 <script>
-const $=s=>document.querySelector(s);
 const state={metrics:[],selected:new Set(),groups:new Set(),tab:'Results',data:null,error:null,lineage:[]};
-const STAGES=['ingest','parse','validate','plan','render','execute','check'];
-const GRAINS=['day','week','month','quarter','year'];
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-async function api(path,body){
-  const r=await fetch(path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{});
-  return {ok:r.ok,status:r.status,json:await r.json()};
-}
 function buildRequest(){
   const req={metric_names:[...state.selected]};
   if(state.groups.size)req.group_by_names=[...state.groups];
@@ -105,7 +151,7 @@ function common(){
   const maps=sel.map(m=>new Map(m.dimensions.map(d=>[d.name,d])));
   return [...maps[0].values()].filter(d=>maps.every(m=>m.has(d.name)));
 }
-function renderMetrics(){
+function renderMetrics_explore(){
   $('#metrics').innerHTML=state.metrics.map(m=>`<label class="item"><input type="checkbox" data-m="${esc(m.name)}" ${state.selected.has(m.name)?'checked':''}><span>${esc(m.name)} <span class="badge">${esc(m.type)}</span>${m.description?`<br><span class="muted">${esc(m.description)}</span>`:''}</span></label>`).join('')||'No metrics';
   document.querySelectorAll('[data-m]').forEach(e=>e.onchange=()=>{e.checked?state.selected.add(e.dataset.m):state.selected.delete(e.dataset.m);
     const ok=new Set(common().map(d=>d.name));[...state.groups].forEach(g=>{if(!ok.has(g)&&!ok.has(base(g)+'__day')&&![...ok].some(n=>base(n)===base(g)))state.groups.delete(g)});renderDims()});
@@ -167,11 +213,15 @@ async function go(kind){
 }
 $('#run').onclick=()=>go('run'); $('#explain').onclick=()=>go('explain');
 $('#theme').onclick=()=>{const r=document.documentElement,dark=getComputedStyle(r).getPropertyValue('--bg').trim()==='#141415';r.dataset.theme=dark?'light':'dark'};
+
+
 (async()=>{
+  await loadState(false);
+  if(B.on&&!B.spec.metrics.length&&!B.spec.semantic_models.length)setTimeout(()=>show('data'),0);
   const [c,l]=await Promise.all([api('/explorer/catalog'),api('/lineage')]);
   if(!c.ok){state.error=c.json;view();$('#metrics').textContent='Failed to load catalog';return}
   state.metrics=c.json.metrics; state.lineage=l.json; $('#summary').textContent=`${state.metrics.length} metrics`;
-  renderMetrics(); view();
+  renderMetrics_explore(); view();
 })();
 </script>
 </body>
